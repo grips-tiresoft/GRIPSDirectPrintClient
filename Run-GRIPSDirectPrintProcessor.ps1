@@ -1,4 +1,4 @@
-﻿# Version: v1.0.1
+﻿# Version: v1.0.2
 
 param (
     [string]$configFile = "$PSScriptRoot\config.json"
@@ -34,7 +34,7 @@ function Get-StoredCredential {
 # Load configuration from JSON file
 $config = Get-Content $configFile | ConvertFrom-Json
 
-$releaseApiUrl = $config.ReleaseURL;
+$releaseApiUrl = $config.ReleaseApiUrl;
 
 # Get decryption key from registry
 $key = @(((Get-ItemProperty HKLM:\Software\GRIPS\l02fKiUY).l02fKiUY) -split ",")
@@ -267,7 +267,7 @@ function RealPrinterName {
 #House keeping
 $ErrorActionPreference = 'Continue'
 $LastPrinterUpdate = (Get-Date).AddSeconds(-$UpdateDelay) # Make sure the update is run immediately on startup of the script
-$LastReleaseCheck = (Get-Date).AddSeconds(-$UpdateDelay) # Make sure the update is run immediately on startup of the script
+$LastReleaseCheck = (Get-Date).AddSeconds(-$ReleaseCheckDelay) # Make sure the release check is run immediately on startup of the script
 
 # Get the full path of the directory containing the script
 $ScriptPath = $PSScriptRoot
@@ -317,14 +317,23 @@ while ($true) {
         if ([version]$releaseVersion -gt [version]$currentVersion) {
             # The latest version is greater than the current version
             # Download the new script version
-            $downloadUrl = $response.assets | Where-Object { $_.name -eq $ScriptName } | Select-Object -ExpandProperty browser_download_url
-            Invoke-WebRequest -Uri $downloadUrl -OutFile "$FullScriptPath.new"
+            $downloadUrl = $LatestRelease.assets | Where-Object { $_.name -eq $ScriptName } | Select-Object -ExpandProperty browser_download_url
+
+            $TempFile = New-TemporaryFile
+
+            Invoke-WebRequest -Uri $downloadUrl -OutFile $TempFile.FullName
+
+            # Remove previous script backup
+            Remove-Item -Path "$FullScriptPath.bak" -ErrorAction SilentlyContinue
 
             # Optionally, backup the old script
             Rename-Item -Path $FullScriptPath -NewName "$FullScriptPath.bak"
 
-            # Replace the old script with the new one
-            Rename-Item -Path "$FullScriptPath.new" -NewName $FullScriptPath
+            # Copy the new script into place
+            Copy-Item -Path $TempFile.FullName -Destination $FullScriptPath
+
+            # Remove the temporary file
+            Remove-Item -Path $TempFile.FullName
 
             Write-Output "Script updated to version $releaseVersion."
 
