@@ -264,6 +264,8 @@ function RealPrinterName {
     return $PrinterName -replace "``", "`\"
 }
 
+Start-Transcript -Path "$env:TEMP\GRIPSDirectPrintProcessor.log" -Append
+
 #House keeping
 $ErrorActionPreference = 'Continue'
 $LastPrinterUpdate = (Get-Date).AddSeconds(-$UpdateDelay) # Make sure the update is run immediately on startup of the script
@@ -316,21 +318,19 @@ while ($true) {
         # Compare versions
         if ([version]$releaseVersion -gt [version]$currentVersion) {
             # The latest version is greater than the current version
-            # Download the new script version
-            $downloadUrl = $LatestRelease.assets | Where-Object { $_.name -eq $ScriptName } | Select-Object -ExpandProperty browser_download_url
 
-            $TempFile = New-TemporaryFile
-
-            Invoke-WebRequest -Uri $downloadUrl -OutFile $TempFile.FullName
+            Write-Output "Updating script to version $releaseVersion..."
 
             # Remove previous script backup
             Remove-Item -Path "$FullScriptPath.bak" -ErrorAction SilentlyContinue
 
-            # Optionally, backup the old script
+            # Backup the old script
             Rename-Item -Path $FullScriptPath -NewName "$FullScriptPath.bak"
 
-            # Move the new script into place
-            Move-Item -Path $TempFile.FullName -Destination $FullScriptPath
+            # Download the new script version
+            $downloadUrl = $LatestRelease.assets | Where-Object { $_.name -eq $ScriptName } | Select-Object -ExpandProperty browser_download_url
+
+            Invoke-WebRequest -Uri $downloadUrl -OutFile $FullScriptPath
 
             Write-Output "Script updated to version $releaseVersion."
 
@@ -428,3 +428,5 @@ while ($true) {
 
     Start-Sleep -Seconds $Delay
 }
+
+Stop-Transcript
