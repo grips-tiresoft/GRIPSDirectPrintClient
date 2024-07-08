@@ -20,6 +20,5 @@
     "Sign_params" : "{0}",
     "Delay": "2",
     "UpdateDelay": "300",
-    "ReleaseApiUrl": "https://api.github.com/repos/grips-tiresoft/GRIPSDirectPrint/releases/latest",
-    "ClientService": "GRIPSDirectPrint Client Service"
+    "ReleaseApiUrl": "https://api.github.com/repos/grips-tiresoft/GRIPSDirectPrint/releases/latest"
 }

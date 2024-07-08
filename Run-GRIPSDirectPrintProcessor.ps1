@@ -79,7 +79,6 @@ $RespCtr = $config.RespCtr
 
 $PrintersWS = "GRIPSDirectPrintPrinterWS"
 $QueuesWS = "GRIPSDirectPrintQueueWS"
-$ClientService = $config.ClientService
 
 # Misc.:
 #$IgnorePrinters = @("OneNote for Windows 10","Microsoft XPS Document Writer","Microsoft Print to PDF","Fax") # Don't offer these printers to Business Central
@@ -334,10 +333,8 @@ while ($true) {
 
             Write-Output "Script updated to version $releaseVersion."
 
-            #Restart the service to invoke new version
-            Restart-Service -Name $ClientService -Force -ErrorAction SilentlyContinue
-
-            Exit
+            # Exit the script with non-zero exit code to force the service to restart
+            Exit 1
         }
         else {
             Write-Output "No update required. Current version ($currentVersion) is up to date."
