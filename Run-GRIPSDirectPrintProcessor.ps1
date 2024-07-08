@@ -1,4 +1,4 @@
-﻿# Version: 1.0.0
+﻿# Version: v1.0.0
 
 param (
     [string]$configFile = "$PSScriptRoot\config.json"
@@ -33,6 +33,8 @@ function Get-StoredCredential {
 
 # Load configuration from JSON file
 $config = Get-Content $configFile | ConvertFrom-Json
+
+$releaseApiUrl = $config.ReleaseURL;
 
 # Get decryption key from registry
 $key = @(((Get-ItemProperty HKLM:\Software\GRIPS\l02fKiUY).l02fKiUY) -split ",")
@@ -77,6 +79,7 @@ $RespCtr = $config.RespCtr
 
 $PrintersWS = "GRIPSDirectPrintPrinterWS"
 $QueuesWS = "GRIPSDirectPrintQueueWS"
+$ClientService = $config.ClientService
 
 # Misc.:
 #$IgnorePrinters = @("OneNote for Windows 10","Microsoft XPS Document Writer","Microsoft Print to PDF","Fax") # Don't offer these printers to Business Central
@@ -109,6 +112,9 @@ $Delay = $config.Delay
 
 #$UpdateDelay = 300 # Delay between updating printers in seconds
 $UpdateDelay = $config.UpdateDelay
+
+#$ReleaseCheckDelay = 600 # Delay between checking for new releases in seconds
+$ReleaseCheckDelay = $config.ReleaseCheckDelay
 
 ### End of Configuration ###
 
@@ -261,6 +267,28 @@ function RealPrinterName {
 #House keeping
 $ErrorActionPreference = 'Continue'
 $LastPrinterUpdate = (Get-Date).AddSeconds(-$UpdateDelay) # Make sure the update is run immediately on startup of the script
+$LastReleaseCheck = (Get-Date).AddSeconds(-$UpdateDelay) # Make sure the update is run immediately on startup of the script
+
+# Get the full path of the directory containing the script
+$ScriptPath = $PSScriptRoot
+
+# Get the filename of the script
+$ScriptName = $MyInvocation.MyCommand.Name
+
+# To combine them into the full path to the script file
+$FullScriptPath = Join-Path -Path $ScriptPath -ChildPath $ScriptName
+
+# Read the script file
+$scriptContent = Get-Content $FullScriptPath
+
+# Extract the current version from the script
+$currentVersion = $null
+foreach ($line in $scriptContent) {
+    if ($line -match "#\s*Version:\s*v?(\d+\.\d+\.\d+)") {
+        $currentVersion = $Matches[1]
+        break
+    }
+}
 
 while ($true) {
     #Fetch printers on this host from BC    
@@ -281,6 +309,36 @@ while ($true) {
             -Body "{""HostID"":""$($env:COMPUTERNAME)"",""PrinterID"":""$(SafePrinterName($Printer.Name))"",""ResponsibilityCenter"":""$($RespCtr)"",""DefaultPrinter"":""$isDefault""}" #| Out-Null
     }
           
+    # Check for new releases
+    if (($(Get-Date) - $LastReleaseCheck).TotalSeconds -gt $ReleaseCheckDelay) {
+        $LatestRelease = Invoke-RestMethod -Uri $releaseApiUrl -Method Get
+        $releaseVersion = $LatestRelease.tag_name.TrimStart('v')
+        # Compare versions
+        if ([version]$releaseVersion -gt [version]$currentVersion) {
+            # The latest version is greater than the current version
+            # Download the new script version
+            $downloadUrl = $response.assets | Where-Object { $_.name -eq $ScriptName } | Select-Object -ExpandProperty browser_download_url
+            Invoke-WebRequest -Uri $downloadUrl -OutFile "$FullScriptPath.new"
+
+            # Optionally, backup the old script
+            Rename-Item -Path $FullScriptPath -NewName "$FullScriptPath.bak"
+
+            # Replace the old script with the new one
+            Rename-Item -Path "$FullScriptPath.new" -NewName $FullScriptPath
+
+            Write-Output "Script updated to version $releaseVersion."
+
+            #Restart the service to invoke new version
+            Restart-Service -Name $ClientService -Force -ErrorAction SilentlyContinue
+
+            Exit
+        }
+        else {
+            Write-Output "No update required. Current version ($currentVersion) is up to date."
+            $LastReleaseCheck = Get-Date
+        }    
+    }
+
     #Update existing printers in BC
     if (($(Get-Date) - $LastPrinterUpdate).TotalSeconds -gt $UpdateDelay) {
         $defaultPrinter = Get-CimInstance -ClassName Win32_Printer | Where-Object { $_.Default -eq $true }
