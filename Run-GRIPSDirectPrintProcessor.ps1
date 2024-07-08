@@ -330,10 +330,7 @@ while ($true) {
             Rename-Item -Path $FullScriptPath -NewName "$FullScriptPath.bak"
 
             # Copy the new script into place
-            Copy-Item -Path $TempFile.FullName -Destination $FullScriptPath
-
-            # Remove the temporary file
-            Remove-Item -Path $TempFile.FullName
+            Move-Item -Path $TempFile.FullName -Destination $FullScriptPath
 
             Write-Output "Script updated to version $releaseVersion."
 
