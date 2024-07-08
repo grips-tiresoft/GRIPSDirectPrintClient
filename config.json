@@ -1,0 +1,25 @@
+{
+    "Company": "GRIPS_DE_TEST",
+    "BasicAuthLogin": "GRDPWSUSER",
+    "OAuth2CustomerAADIDOrDomain": "1234",
+    "OAuth2ClientID": "1234",
+    "OAuth2ClientSecret": "1234",
+    "BaseURL": "https://localhost:7048/BC240/ODatav4",
+    "RespCtr": "0555",
+    "IgnorePrinters": [
+        "OneNote",
+        "OneNote (Desktop)",
+        "OneNote for Windows 10",
+        "Microsoft XPS Document Writer",
+        "Fax"
+    ],
+    "PDFPrinter_exe": "SumatraPDF\\SumatraPDF-3.4.6-32.exe",
+    "PDFPrinter_params": "-print-to \"{0}\" -print-settings \"{2}{3}\" \"{1}\"",
+    "PaperSourceArgument": "bin={0},",
+    "Sign_exe": "C:\\Program Files\\signotec\\signoSign2\\SignoSign2.exe",
+    "Sign_params" : "{0}",
+    "Delay": "2",
+    "UpdateDelay": "300",
+    "ReleaseApiUrl": "https://api.github.com/repos/grips-tiresoft/GRIPSDirectPrint/releases/latest",
+    "ClientService": "GRIPSDirectPrint Client Service"
+}
