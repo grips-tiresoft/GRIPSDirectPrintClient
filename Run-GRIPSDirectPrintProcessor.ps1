@@ -329,7 +329,7 @@ while ($true) {
             # Optionally, backup the old script
             Rename-Item -Path $FullScriptPath -NewName "$FullScriptPath.bak"
 
-            # Copy the new script into place
+            # Move the new script into place
             Move-Item -Path $TempFile.FullName -Destination $FullScriptPath
 
             Write-Output "Script updated to version $releaseVersion."
