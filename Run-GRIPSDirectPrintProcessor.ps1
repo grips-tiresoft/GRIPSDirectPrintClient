@@ -1,4 +1,4 @@
-﻿# Version: v1.0.8
+﻿# Version: v1.0.9
 
 param (
     [string]$configFile = "$PSScriptRoot\config.json"
@@ -275,9 +275,9 @@ function Update-Check {
         )
 
         $LatestRelease = Invoke-RestMethod -Uri $releaseApiUrl -Method Get
-        $global:releaseVersion = $LatestRelease.tag_name.TrimStart('v')
+        $releaseVersion = $LatestRelease.tag_name.TrimStart('v')
         # Compare versions
-        if ([version]$global:releaseVersion -gt [version]$currentVersion) {
+        if ([version]$releaseVersion -gt [version]$currentVersion) {
             # The latest version is greater than the current version
             $TempZipFile = [System.IO.Path]::GetTempFileName() + ".zip"
             $TempExtractPath = [System.IO.Path]::GetTempPath() + [System.Guid]::NewGuid().ToString()
@@ -306,7 +306,7 @@ function Update-Check {
             Remove-Item -Path $TempZipFile -Force
         }
         else {
-            Write-Output "No update required. Current version ($currentVersion) is up to date."
+            Write-Output "No update required. Current version ($global:currentVersion) is up to date."
         }
     }
 }
@@ -331,10 +331,28 @@ function Update-Release {
 
     Remove-Item -Path $updateSignalFile -Force
 
-    Write-Output "Script updated to version $global:releaseVersion."
+    Get-ScriptVersion -ScriptPath $FullScriptPath
+    Write-Output "Script updated to version $global:currentVersion."
 
     # Exit the script with non-zero exit code to force the service to restart
     Exit 1
+}
+
+function Get-ScriptVersion {
+    param (
+        [string]$ScriptPath
+    )
+
+    $scriptContent = Get-Content -Path $ScriptPath
+    # Extract the current version from the script
+    $global:currentVersion = $null
+    foreach ($line in $scriptContent) {
+        if ($line -match "#\s*Version:\s*v?(\d+\.\d+\.\d+)") {
+            $currentVersion = $Matches[1]
+            break
+        }
+    }        
+    Write-Output "Script version: $global:currentVersion"
 }
 
 Start-Transcript -Path "$env:TEMP\GRIPSDirectPrintProcessor.log" -Append
@@ -353,17 +371,7 @@ $ScriptName = $MyInvocation.MyCommand.Name
 # To combine them into the full path to the script file
 $FullScriptPath = Join-Path -Path $ScriptPath -ChildPath $ScriptName
 
-# Read the script file
-$scriptContent = Get-Content $FullScriptPath
-
-# Extract the current version from the script
-$currentVersion = $null
-foreach ($line in $scriptContent) {
-    if ($line -match "#\s*Version:\s*v?(\d+\.\d+\.\d+)") {
-        $currentVersion = $Matches[1]
-        break
-    }
-}
+Get-ScriptVersion -ScriptPath $FullScriptPath -version ([ref]$currentVersion)
 
 # Define update signal file
 $updateSignalFile = "$ScriptPath\update_ready.txt"
