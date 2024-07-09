@@ -1,4 +1,4 @@
-﻿# Version: v1.0.4
+﻿# Version: v1.0.5
 
 param (
     [string]$configFile = "$PSScriptRoot\config.json"
@@ -267,7 +267,7 @@ function Update-Release {
     Write-Output "Updating script to version $releaseVersion..."
 
     # Get the URL of the source code zip
-    $downloadUrl = $releaseVersion.zipball_url
+    $downloadUrl = $LatestRelease.zipball_url
 
     $TempZipFile = [System.IO.Path]::GetTempFileName() + ".zip"
     $TempExtractPath = [System.IO.Path]::GetTempPath() + [System.Guid]::NewGuid().ToString()
