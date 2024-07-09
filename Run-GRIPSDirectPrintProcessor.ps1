@@ -1,4 +1,4 @@
-﻿# Version: v1.0.7
+﻿# Version: v1.0.8
 
 param (
     [string]$configFile = "$PSScriptRoot\config.json"
@@ -264,6 +264,8 @@ function RealPrinterName {
 }
 
 function Update-Check {
+    Write-Host "Checking for updates..." -ForegroundColor White
+    
     # Start background job to check for updates
     Start-Job -Arg $releaseApiUrl, $currentVersion, $updateSignalFile -ScriptBlock {
         param (
