@@ -1,4 +1,4 @@
-﻿# Version: v1.0.5
+﻿# Version: v1.0.6
 
 param (
     [string]$configFile = "$PSScriptRoot\config.json"
@@ -157,7 +157,7 @@ function Get-OAuth2AccessToken {
     }
 }
 
-function Call-BCWebService {
+function Invoke-BCWebService {
     param (
         [parameter(Mandatory = $true, ValueFromPipelineByPropertyName = $true)]
         [String]$Method,
@@ -263,37 +263,76 @@ function RealPrinterName {
     return $PrinterName -replace "``", "`\"
 }
 
-function Update-Release {
-    Write-Output "Updating script to version $releaseVersion..."
+function Update-Check {
+    # Start background job to check for updates
+    #Start-Job -Arg $releaseApiUrl, $currentVersion, $updateSignalFile -ScriptBlock {
+    #    param (
+    #        [string]$releaseApiUrl,
+    #        [string]$currentVersion,
+    #        [string]$updateSignalFile
+    #    )
 
-    # Get the URL of the source code zip
-    $downloadUrl = $LatestRelease.zipball_url
+    $LatestRelease = Invoke-RestMethod -Uri $releaseApiUrl -Method Get
+    $releaseVersion = $LatestRelease.tag_name.TrimStart('v')
+    # Compare versions
+    if ([version]$releaseVersion -gt [version]$currentVersion) {
+        # The latest version is greater than the current version
+        $TempZipFile = [System.IO.Path]::GetTempFileName() + ".zip"
+        $TempExtractPath = [System.IO.Path]::GetTempPath() + [System.Guid]::NewGuid().ToString()
 
-    $TempZipFile = [System.IO.Path]::GetTempFileName() + ".zip"
-    $TempExtractPath = [System.IO.Path]::GetTempPath() + [System.Guid]::NewGuid().ToString()
-    
-    # Download the ZIP file containing the new script version and other files
-    Invoke-WebRequest -Uri $downloadUrl -OutFile $TempZipFile
+        # Get the URL of the source code zip
+        $downloadUrl = $LatestRelease.zipball_url
 
-    # Extract the ZIP file to a temporary directory
-    Expand-Archive -Path $TempZipFile -DestinationPath $TempExtractPath
+        # Download the ZIP file containing the new script version and other files
+        Invoke-WebRequest -Uri $downloadUrl -OutFile $TempZipFile
 
-    # Ensure the destination directory exists
-    if (-not (Test-Path -Path $scriptDirectory)) {
-        New-Item -Path $ScriptPath -ItemType Directory
+        # Extract the ZIP file to a temporary directory
+        Expand-Archive -Path $TempZipFile -DestinationPath $TempExtractPath
+
+        # Find the sub-folder in the extracted directory
+        $extractedSubFolder = Get-ChildItem -Path $TempExtractPath | Where-Object { $_.PSIsContainer } | Select-Object -First 1
+
+        # Ensure the file exists before writing to it
+        if (-not (Test-Path -Path $updateSignalFile)) {
+            New-Item -Path $updateSignalFile -ItemType File -Force
+        }
+        
+        # Signal the main script that the update is ready
+        Set-Content -Path $updateSignalFile -Value "$($extractedSubFolder.FullName)"
+
+        # Clean up temporary files
+        Remove-Item -Path $TempZipFile -Force
     }
+    else {
+        Write-Output "No update required. Current version ($currentVersion) is up to date."
+    }
+    #}
+}
+
+# Function to perform the update
+function Update-Release {
+    # Read the path of the extracted folder
+    $extractedSubFolder = Get-Content -Path $updateSignalFile
 
     # Backup the current script directory
-    $backupScriptDirectory = "$scriptDirectory.bak"
+    $backupScriptDirectory = "$ScriptPath.bak"
     if (Test-Path -Path $backupScriptDirectory) {
         Remove-Item -Path $backupScriptDirectory -Recurse -ErrorAction SilentlyContinue
     }
-    Rename-Item -Path $ScriptPath -NewName $backupScriptDirectory
+    
+    # Copy the script directory to the backup directory
+    Copy-Item -Path $ScriptPath -Destination $backupScriptDirectory -Recurse -Force
 
-    # Copy the extracted files to the destination directory
-    Copy-Item -Path "$TempExtractPath\*" -Destination $scriptDirectory -Recurse -Force
+    # Copy the extracted files from the sub-folder to the destination directory
+    $resolvedPath = Resolve-Path -Path $extractedSubFolder
+    Copy-Item -Path "$resolvedPath\*" -Destination $ScriptPath -Recurse -Force
+
+    Remove-Item -Path $updateSignalFile -Force
 
     Write-Output "Script updated to version $releaseVersion."
+
+    # Exit the script with non-zero exit code to force the service to restart
+    Exit 1
 }
 
 Start-Transcript -Path "$env:TEMP\GRIPSDirectPrintProcessor.log" -Append
@@ -324,10 +363,23 @@ foreach ($line in $scriptContent) {
     }
 }
 
+# Define update signal file
+$updateSignalFile = "$ScriptPath\update_ready.txt"
+
 while ($true) {
+    # Check for new releases
+    if (($(Get-Date) - $LastReleaseCheck).TotalSeconds -gt $ReleaseCheckDelay) {
+        Update-Check
+        $LastReleaseCheck = Get-Date
+    }
+
+    if (Test-Path -Path $updateSignalFile) {
+        Update-Release
+    }
+
     #Fetch printers on this host from BC    
     Clear-Variable -Name "BCPrinters" -ErrorAction SilentlyContinue
-    $BCPrinters = (Call-BCWebService -Method Get -BaseURL $BaseURL -WebServiceName $PrintersWS -Filter "HostID eq '$env:COMPUTERNAME'" -Authentication $Authentication).value
+    $BCPrinters = (Invoke-BCWebService -Method Get -BaseURL $BaseURL -WebServiceName $PrintersWS -Filter "HostID eq '$env:COMPUTERNAME'" -Authentication $Authentication).value
 
     #Register new printers in BC
     foreach ($Printer in (Get-Printer | Where-Object { $IgnorePrinters -notcontains $_.Name } | Where-Object { $BCPrinters.PrinterID -notcontains $(SafePrinterName($_.Name)) })) {
@@ -339,28 +391,10 @@ while ($true) {
             $isDefault = 'false'
         }
         Write-Host "$(Get-Date -Format "yyyy-MM-dd HH:mm:ss") Adding new printer in BC: $($Printer.Name)" -ForegroundColor Yellow
-        Call-BCWebService -Method Post -BaseURL $BaseURL -WebServiceName $PrintersWS -Authentication $Authentication `
+        Invoke-BCWebService -Method Post -BaseURL $BaseURL -WebServiceName $PrintersWS -Authentication $Authentication `
             -Body "{""HostID"":""$($env:COMPUTERNAME)"",""PrinterID"":""$(SafePrinterName($Printer.Name))"",""ResponsibilityCenter"":""$($RespCtr)"",""DefaultPrinter"":""$isDefault""}" #| Out-Null
     }
           
-    # Check for new releases
-    if (($(Get-Date) - $LastReleaseCheck).TotalSeconds -gt $ReleaseCheckDelay) {
-        $LatestRelease = Invoke-RestMethod -Uri $releaseApiUrl -Method Get
-        $releaseVersion = $LatestRelease.tag_name.TrimStart('v')
-        # Compare versions
-        if ([version]$releaseVersion -gt [version]$currentVersion) {
-            # The latest version is greater than the current version
-            Update-Release
-
-            # Exit the script with non-zero exit code to force the service to restart
-            Exit 1
-        }
-        else {
-            Write-Output "No update required. Current version ($currentVersion) is up to date."
-            $LastReleaseCheck = Get-Date
-        }    
-    }
-
     #Update existing printers in BC
     if (($(Get-Date) - $LastPrinterUpdate).TotalSeconds -gt $UpdateDelay) {
         $defaultPrinter = Get-CimInstance -ClassName Win32_Printer | Where-Object { $_.Default -eq $true }
@@ -374,7 +408,7 @@ while ($true) {
                 $isDefault = 'false'
             }
             Write-Host "$(Get-Date -Format "yyyy-MM-dd HH:mm:ss") Updating printer in BC (RowNo: $($BCPrinter.RowNo)): $(SafePrinterName($Printer.Name))" -ForegroundColor Yellow   
-            Call-BCWebService -Method Patch -BaseURL $BaseURL -WebServiceName $PrintersWS -DirectLookup $BCPrinter.RowNo -ETag $BCPrinter."@odata.etag" -Authentication $Authentication `
+            Invoke-BCWebService -Method Patch -BaseURL $BaseURL -WebServiceName $PrintersWS -DirectLookup $BCPrinter.RowNo -ETag $BCPrinter."@odata.etag" -Authentication $Authentication `
                 -Body "{""HostID"":""$env:COMPUTERNAME"",""PrinterID"":""$(SafePrinterName($Printer.Name))"",""ResponsibilityCenter"":""$RespCtr"",""DefaultPrinter"":""$isDefault""}" #| Out-Null
         }
         $LastPrinterUpdate = Get-Date
@@ -383,7 +417,7 @@ while ($true) {
 
     #Print the queued jobs for the printers on this host
     if (($BCPrinters.NoQueued | Measure-Object -Sum).Sum -gt 0 ) {
-        foreach ($Job in (Call-BCWebService -Method Get -BaseURL $BaseURL -WebServiceName $QueuesWS -Filter "HostID eq '$env:COMPUTERNAME' and Status eq 'Queued'" -Authentication $Authentication).value) {
+        foreach ($Job in (Invoke-BCWebService -Method Get -BaseURL $BaseURL -WebServiceName $QueuesWS -Filter "HostID eq '$env:COMPUTERNAME' and Status eq 'Queued'" -Authentication $Authentication).value) {
             $Job = Call-BCWebService -Method Patch -BaseURL $BaseURL -WebServiceName $QueuesWS -DirectLookup ($Job.RowNo) -ETag ($Job."@odata.etag") `
                 -Body "{""Status"":""Printing""}" -Authentication $Authentication
             Write-Host "$(Get-Date -Format "yyyy-MM-dd HH:mm:ss") Printing job (RowNo: $($Job.RowNo)) on printer $(RealPrinterName($Job.PrinterID))..." -ForegroundColor Yellow
