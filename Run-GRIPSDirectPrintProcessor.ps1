@@ -1,4 +1,4 @@
-﻿# Version: v1.0.9
+﻿# Version: v1.0.10
 
 param (
     [string]$configFile = "$PSScriptRoot\config.json"
@@ -371,7 +371,7 @@ $ScriptName = $MyInvocation.MyCommand.Name
 # To combine them into the full path to the script file
 $FullScriptPath = Join-Path -Path $ScriptPath -ChildPath $ScriptName
 
-Get-ScriptVersion -ScriptPath $FullScriptPath -version ([ref]$currentVersion)
+Get-ScriptVersion -ScriptPath $FullScriptPath
 
 # Define update signal file
 $updateSignalFile = "$ScriptPath\update_ready.txt"
