@@ -267,7 +267,7 @@ function Update-Release {
     Write-Output "Updating script to version $releaseVersion..."
 
     # Get the URL of the source code zip
-    $downloadUrl = $releaseInfo.zipball_url
+    $downloadUrl = $releaseVersion.zipball_url
 
     $TempZipFile = [System.IO.Path]::GetTempFileName() + ".zip"
     $TempExtractPath = [System.IO.Path]::GetTempPath() + [System.Guid]::NewGuid().ToString()
