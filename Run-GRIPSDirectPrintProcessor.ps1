@@ -1,4 +1,4 @@
-﻿# Version: v1.0.2
+﻿# Version: v1.0.3
 
 param (
     [string]$configFile = "$PSScriptRoot\config.json"
@@ -64,13 +64,13 @@ $Authentication = @{
 # * DONE: Pick up default printer and use when no printer is specified
 # * DONE: Adapt all places where printers are displayed/selected and show normal printers page instead of Web Client Printers when Printing App is disabled
 # * Renumber objects according to GRIPS rules
-# * Move Settings config.json
-# * Excrypt password using secret protected key read from the registry
+# * DONE: Move Settings config.json
+# * DONE: Encrypt password using secret protected key read from the registry
 # * Create installation script to install processor as service using nssm
 #       - Should prompt for parameters during installation
 #       - List of URLs with by country - separate file to settings so can be modified centrally
-# * Make self-updating - see info. from chatGPT saved in BC DirectPrinting folder
-# * Handle additional arguments e.g. "-sign" for Signosign (create field on GRIPSDirectPrintQueue table and fill from printer selection using events)
+# * IN PROGRESS: Make self-updating - see info. from chatGPT saved in BC DirectPrinting folder
+# * DONE: Handle additional arguments e.g. "-sign" for Signosign (create field on GRIPSDirectPrintQueue table and fill from printer selection using events)
 
 # URLs for webservices:
 #$BaseURL    = "https://<hostname>/<instance>/ODataV4/"
@@ -263,6 +263,39 @@ function RealPrinterName {
     return $PrinterName -replace "``", "`\"
 }
 
+function Update-Release {
+    Write-Output "Updating script to version $releaseVersion..."
+
+    # Get the URL of the source code zip
+    $downloadUrl = $releaseInfo.zipball_url
+
+    $TempZipFile = [System.IO.Path]::GetTempFileName() + ".zip"
+    $TempExtractPath = [System.IO.Path]::GetTempPath() + [System.Guid]::NewGuid().ToString()
+    
+    # Download the ZIP file containing the new script version and other files
+    Invoke-WebRequest -Uri $downloadUrl -OutFile $TempZipFile
+
+    # Extract the ZIP file to a temporary directory
+    Expand-Archive -Path $TempZipFile -DestinationPath $TempExtractPath
+
+    # Ensure the destination directory exists
+    if (-not (Test-Path -Path $scriptDirectory)) {
+        New-Item -Path $ScriptPath -ItemType Directory
+    }
+
+    # Backup the current script directory
+    $backupScriptDirectory = "$scriptDirectory.bak"
+    if (Test-Path -Path $backupScriptDirectory) {
+        Remove-Item -Path $backupScriptDirectory -Recurse -ErrorAction SilentlyContinue
+    }
+    Rename-Item -Path $ScriptPath -NewName $backupScriptDirectory
+
+    # Copy the extracted files to the destination directory
+    Copy-Item -Path "$TempExtractPath\*" -Destination $scriptDirectory -Recurse -Force
+
+    Write-Output "Script updated to version $releaseVersion."
+}
+
 Start-Transcript -Path "$env:TEMP\GRIPSDirectPrintProcessor.log" -Append
 
 #House keeping
@@ -317,21 +350,7 @@ while ($true) {
         # Compare versions
         if ([version]$releaseVersion -gt [version]$currentVersion) {
             # The latest version is greater than the current version
-
-            Write-Output "Updating script to version $releaseVersion..."
-
-            # Remove previous script backup
-            Remove-Item -Path "$FullScriptPath.bak" -ErrorAction SilentlyContinue
-
-            # Backup the old script
-            Rename-Item -Path $FullScriptPath -NewName "$FullScriptPath.bak"
-
-            # Download the new script version
-            $downloadUrl = $LatestRelease.assets | Where-Object { $_.name -eq $ScriptName } | Select-Object -ExpandProperty browser_download_url
-
-            Invoke-WebRequest -Uri $downloadUrl -OutFile $FullScriptPath
-
-            Write-Output "Script updated to version $releaseVersion."
+            Update-Release
 
             # Exit the script with non-zero exit code to force the service to restart
             Exit 1
