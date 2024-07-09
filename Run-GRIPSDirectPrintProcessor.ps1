@@ -1,4 +1,4 @@
-﻿# Version: v1.0.3
+﻿# Version: v1.0.4
 
 param (
     [string]$configFile = "$PSScriptRoot\config.json"
