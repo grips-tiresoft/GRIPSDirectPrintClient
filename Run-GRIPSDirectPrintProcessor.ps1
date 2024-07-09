@@ -1,4 +1,4 @@
-﻿# Version: v1.0.6
+﻿# Version: v1.0.7
 
 param (
     [string]$configFile = "$PSScriptRoot\config.json"
@@ -265,48 +265,48 @@ function RealPrinterName {
 
 function Update-Check {
     # Start background job to check for updates
-    #Start-Job -Arg $releaseApiUrl, $currentVersion, $updateSignalFile -ScriptBlock {
-    #    param (
-    #        [string]$releaseApiUrl,
-    #        [string]$currentVersion,
-    #        [string]$updateSignalFile
-    #    )
+    Start-Job -Arg $releaseApiUrl, $currentVersion, $updateSignalFile -ScriptBlock {
+        param (
+            [string]$releaseApiUrl,
+            [string]$currentVersion,
+            [string]$updateSignalFile
+        )
 
-    $LatestRelease = Invoke-RestMethod -Uri $releaseApiUrl -Method Get
-    $releaseVersion = $LatestRelease.tag_name.TrimStart('v')
-    # Compare versions
-    if ([version]$releaseVersion -gt [version]$currentVersion) {
-        # The latest version is greater than the current version
-        $TempZipFile = [System.IO.Path]::GetTempFileName() + ".zip"
-        $TempExtractPath = [System.IO.Path]::GetTempPath() + [System.Guid]::NewGuid().ToString()
+        $LatestRelease = Invoke-RestMethod -Uri $releaseApiUrl -Method Get
+        $global:releaseVersion = $LatestRelease.tag_name.TrimStart('v')
+        # Compare versions
+        if ([version]$global:releaseVersion -gt [version]$currentVersion) {
+            # The latest version is greater than the current version
+            $TempZipFile = [System.IO.Path]::GetTempFileName() + ".zip"
+            $TempExtractPath = [System.IO.Path]::GetTempPath() + [System.Guid]::NewGuid().ToString()
 
-        # Get the URL of the source code zip
-        $downloadUrl = $LatestRelease.zipball_url
+            # Get the URL of the source code zip
+            $downloadUrl = $LatestRelease.zipball_url
 
-        # Download the ZIP file containing the new script version and other files
-        Invoke-WebRequest -Uri $downloadUrl -OutFile $TempZipFile
+            # Download the ZIP file containing the new script version and other files
+            Invoke-WebRequest -Uri $downloadUrl -OutFile $TempZipFile
 
-        # Extract the ZIP file to a temporary directory
-        Expand-Archive -Path $TempZipFile -DestinationPath $TempExtractPath
+            # Extract the ZIP file to a temporary directory
+            Expand-Archive -Path $TempZipFile -DestinationPath $TempExtractPath
 
-        # Find the sub-folder in the extracted directory
-        $extractedSubFolder = Get-ChildItem -Path $TempExtractPath | Where-Object { $_.PSIsContainer } | Select-Object -First 1
+            # Find the sub-folder in the extracted directory
+            $extractedSubFolder = Get-ChildItem -Path $TempExtractPath | Where-Object { $_.PSIsContainer } | Select-Object -First 1
 
-        # Ensure the file exists before writing to it
-        if (-not (Test-Path -Path $updateSignalFile)) {
-            New-Item -Path $updateSignalFile -ItemType File -Force
-        }
+            # Ensure the file exists before writing to it
+            if (-not (Test-Path -Path $updateSignalFile)) {
+                New-Item -Path $updateSignalFile -ItemType File -Force
+            }
         
-        # Signal the main script that the update is ready
-        Set-Content -Path $updateSignalFile -Value "$($extractedSubFolder.FullName)"
+            # Signal the main script that the update is ready
+            Set-Content -Path $updateSignalFile -Value "$($extractedSubFolder.FullName)"
 
-        # Clean up temporary files
-        Remove-Item -Path $TempZipFile -Force
+            # Clean up temporary files
+            Remove-Item -Path $TempZipFile -Force
+        }
+        else {
+            Write-Output "No update required. Current version ($currentVersion) is up to date."
+        }
     }
-    else {
-        Write-Output "No update required. Current version ($currentVersion) is up to date."
-    }
-    #}
 }
 
 # Function to perform the update
@@ -329,7 +329,7 @@ function Update-Release {
 
     Remove-Item -Path $updateSignalFile -Force
 
-    Write-Output "Script updated to version $releaseVersion."
+    Write-Output "Script updated to version $global:releaseVersion."
 
     # Exit the script with non-zero exit code to force the service to restart
     Exit 1
