@@ -1,4 +1,4 @@
-﻿# Version: v1.0.10
+﻿# Version: v1.0.11
 
 param (
     [string]$configFile = "$PSScriptRoot\config.json"
@@ -348,7 +348,7 @@ function Get-ScriptVersion {
     $global:currentVersion = $null
     foreach ($line in $scriptContent) {
         if ($line -match "#\s*Version:\s*v?(\d+\.\d+\.\d+)") {
-            $currentVersion = $Matches[1]
+            $global:currentVersion = $Matches[1]
             break
         }
     }        
