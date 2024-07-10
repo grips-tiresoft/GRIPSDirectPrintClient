@@ -1,4 +1,4 @@
-﻿# Version: v1.0.11
+﻿# Version: v1.0.12
 
 param (
     [string]$configFile = "$PSScriptRoot\config.json"
@@ -428,7 +428,7 @@ while ($true) {
     #Print the queued jobs for the printers on this host
     if (($BCPrinters.NoQueued | Measure-Object -Sum).Sum -gt 0 ) {
         foreach ($Job in (Invoke-BCWebService -Method Get -BaseURL $BaseURL -WebServiceName $QueuesWS -Filter "HostID eq '$env:COMPUTERNAME' and Status eq 'Queued'" -Authentication $Authentication).value) {
-            $Job = Call-BCWebService -Method Patch -BaseURL $BaseURL -WebServiceName $QueuesWS -DirectLookup ($Job.RowNo) -ETag ($Job."@odata.etag") `
+            $Job = Invoke-BCWebService -Method Patch -BaseURL $BaseURL -WebServiceName $QueuesWS -DirectLookup ($Job.RowNo) -ETag ($Job."@odata.etag") `
                 -Body "{""Status"":""Printing""}" -Authentication $Authentication
             Write-Host "$(Get-Date -Format "yyyy-MM-dd HH:mm:ss") Printing job (RowNo: $($Job.RowNo)) on printer $(RealPrinterName($Job.PrinterID))..." -ForegroundColor Yellow
 
@@ -466,7 +466,7 @@ while ($true) {
                 $Params = $PDFPrinter_params -f $($Job.PrinterID -replace "``", "`\"), $PDFFileName, $PaperSourceArgument, $AddArgs
             }
 
-            $InvokeRestMethodParameters = (Call-BCWebService -Method Patch -BaseURL $BaseURL -WebServiceName $QueuesWS -DirectLookup ($Job.RowNo) -ETag ($Job."@odata.etag") `
+            $InvokeRestMethodParameters = (Invoke-BCWebService -Method Patch -BaseURL $BaseURL -WebServiceName $QueuesWS -DirectLookup ($Job.RowNo) -ETag ($Job."@odata.etag") `
                     -Body "{""Status"":""Printed"",""PrinterMessage"":""Passed to $(Split-Path -Path $Executable -Leaf) for $Action""}" `
                     -Authentication $Authentication -GetParametersOnly)
 
