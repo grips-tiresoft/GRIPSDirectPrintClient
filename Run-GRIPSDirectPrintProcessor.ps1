@@ -6,18 +6,6 @@ param (
 
 ### POWERSHELL ON WINDOWS ###
 
-
-# 1. Install the App on your BC
-# 2. Make sure the required printers are installed and working on your PC
-# 3. Download PDF-XChange Viewer Portable on your PC: https://portableapps.com/apps/office/pdf-xchange-portable
-# 4. Modify the Configuration part of this script
-# 5. Run it
-# 6. Open BC, go to the GRIPSDirectPrint page. Disable printers you don't need in BC
-# 7. The printers are now available for direct print in BC
-
-
-### Configuration ###
-
 # Function to get the decrypted credentials from the encrypted file
 function Get-StoredCredential {
     param([string]$credFile,
@@ -33,6 +21,18 @@ function Get-StoredCredential {
 
 # Load configuration from JSON file
 $config = Get-Content $configFile | ConvertFrom-Json
+
+# Check if userconfig.json exists
+$userConfigFile = "$PSScriptRoot\userconfig.json"
+if (Test-Path -Path $userConfigFile -PathType Leaf) {
+    # Load user configuration from userconfig.json
+    $userConfig = Get-Content $userConfigFile | ConvertFrom-Json
+
+    # Update or add keys from user configuration
+    $userConfig.PSObject.Properties | ForEach-Object {
+        $config.$($_.Name) = $_.Value
+    }
+}
 
 $releaseApiUrl = $config.ReleaseApiUrl;
 
@@ -66,11 +66,14 @@ $Authentication = @{
 # * Renumber objects according to GRIPS rules
 # * DONE: Move Settings config.json
 # * DONE: Encrypt password using secret protected key read from the registry
-# * Create installation script to install processor as service using nssm
+# * TODO: Create installation script to install processor as service using nssm
 #       - Should prompt for parameters during installation
 #       - List of URLs with by country - separate file to settings so can be modified centrally
-# * IN PROGRESS: Make self-updating - see info. from chatGPT saved in BC DirectPrinting folder
+# * TODO: Make overrides for settings in config.json - load userconfig.json if exists
+# * DONE: Make self-updating - see info. from chatGPT saved in BC DirectPrinting folder
 # * DONE: Handle additional arguments e.g. "-sign" for Signosign (create field on GRIPSDirectPrintQueue table and fill from printer selection using events)
+
+### Configuration ###
 
 # URLs for webservices:
 #$BaseURL    = "https://<hostname>/<instance>/ODataV4/"

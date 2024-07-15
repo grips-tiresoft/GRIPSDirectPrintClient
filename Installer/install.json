@@ -1,4 +1,30 @@
 {
     "ReleaseApiUrl": "https://api.github.com/repos/grips-tiresoft/GRIPSDirectPrint/releases/latest",
-    "InstallPath": "C:\\ProgramData\\GRIPSDirectPrintClient"
+    "InstallPath": "C:\\ProgramData\\GRIPSDirectPrintClient",
+    "Countries": {
+        "DE": {
+            "Databases": {
+                "GRIPS_DE_PROD": {
+                    "BaseURL": "https://de.gripsportal.com:30225/DE_PROD_WS/ODataV4/"
+                },
+                "GRIPS_DE_PROD1": {
+                    "BaseURL": "https://de.gripsportal.com:30226/DE_PROD_WS/ODataV4/"
+                }
+            }
+        },
+        "AT": {
+            "Databases": {
+                "GRIPS_AT_PROD": {
+                    "BaseURL": "https://at.gripsportal.com:30220/AT_PROD_WS/ODataV4/"
+                }
+            }
+        },
+        "CH": {
+            "Databases": {
+                "GRIPS_CH_PROD": {
+                    "BaseURL": "https://ch.gripsportal.com:30221/CH_PROD_WS/ODataV4/"
+                }
+            }
+        }
+    }
 }
