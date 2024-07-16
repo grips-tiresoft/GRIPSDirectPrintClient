@@ -13,7 +13,8 @@
                     "BaseURL": "https://testnav.gripsportal.com:49000/DE22_TEST_WS/ODataV4/",
                     "Company": "GRIPS_DE_TEST"
                 }
-            },
+            }
+        },
         "DE": {
             "Name": "Deutchland",
             "StartIndex": "0",
