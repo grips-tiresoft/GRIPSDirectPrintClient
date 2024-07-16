@@ -6,6 +6,14 @@
     "OAuth2ClientID": "1234",
     "OAuth2ClientSecret": "1234",
     "Countries": {
+        "TEST": {
+            "Name": "Deutchland (TEST)",
+            "Databases": {
+                "GRIPS_DE22_TEST": {
+                    "BaseURL": "https://testnav.gripsportal.com:49000/DE22_TEST_WS/ODataV4/",
+                    "Company": "GRIPS_DE_TEST"
+                }
+            },
         "DE": {
             "Name": "Deutchland",
             "StartIndex": "0",

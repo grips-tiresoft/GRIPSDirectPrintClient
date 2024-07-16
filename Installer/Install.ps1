@@ -180,6 +180,19 @@ function Invoke-BCWebService {
     }
 }
 
+# Function to get the decrypted credentials from the encrypted file
+function Get-StoredCredential {
+    param([string]$credFile,
+        $key)
+
+    if (Test-Path -Path $credFile -PathType Leaf) {
+        $credArray = Get-Content $credFile
+        $credential = New-Object -TypeName System.Management.Automation.PSCredential `
+            -ArgumentList $credArray[0], ($credArray[1] | ConvertTo-SecureString -Key $key)
+        return $credential
+    }
+}
+
 # Set PowerShell console to use UTF-8 encoding
 [Console]::InputEncoding = [Console]::OutputEncoding = New-Object System.Text.UTF8Encoding
 
