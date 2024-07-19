@@ -12,6 +12,10 @@
                 "GRIPS_DE22_TEST": {
                     "BaseURL": "https://testnav.gripsportal.com:49000/DE22_TEST_WS/ODataV4/",
                     "Company": "GRIPS_DE_TEST"
+                },
+                "Localhost": {
+                    "BaseURL": "https://localhost:7048/BC240/ODatav4/",
+                    "Company": "GRIPS_DE_TEST"
                 }
             }
         },

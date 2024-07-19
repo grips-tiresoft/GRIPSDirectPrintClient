@@ -30,7 +30,7 @@ function DisplayMenuAndReadSelection {
 
         # Validate selection
         $selInt = $selection -as [int]
-        $isValid = ($selInt -ge $StartIndex) -and ($selInt -le $($StartIndex+$Items.Count-1))
+        $isValid = ($selInt -ge $StartIndex) -and ($selInt -le $($StartIndex + $Items.Count - 1))
 
         if (-not $isValid) {
             Write-Host "Invalid selection. Please try again." -ForegroundColor Red
@@ -136,10 +136,18 @@ function Invoke-BCWebService {
         }
         
         if (-not ([string]::IsNullOrEmpty($Authentication.Company))) {
-            $URL = "$URL/Company('$($Authentication.Company)')"
+            if ($Method -ne "Post") {
+                $URL = "$URL/Company('$($Authentication.Company)')"
+            }
         }
 
         $URL = "$URL/$WebServiceName"
+
+        if (-not ([string]::IsNullOrEmpty($Authentication.Company))) {
+            if ($Method -eq "Post") {
+                $URL = "$URL?company='$($Authentication.Company)'"
+            }
+        }
 
         if (-not ([string]::IsNullOrEmpty($DirectLookup))) {
             $URL = "$URL($DirectLookup)"
@@ -292,12 +300,13 @@ $title = "Database Selection"
 #$selectedOption = $Host.UI.PromptForChoice($title, $message, $options, 0)
 if ($selectedCountry.StartIndex) {
     $selectionResult = DisplayMenuAndReadSelection -Items $Items -Title $title -StartIndex $selectedCountry.StartIndex
-} else {
+}
+else {
     $selectionResult = DisplayMenuAndReadSelection -Items $Items -Title $title
 }
 
 # Convert the selection to the country code
-$selectedDatabase = $selectedCountry.Databases.PSObject.Properties.Name[$selectionResult.Index]
+$selectedDatabase = @($selectedCountry.Databases.PSObject.Properties.Name)[$selectionResult.Index]
 $selectedBaseURL = $selectedCountry.Databases.$selectedDatabase.BaseURL
 $selectedCompany = $selectedCountry.Databases.$selectedDatabase.Company
 
@@ -323,18 +332,73 @@ $Authentication = @{
     "OAuth2ClientSecret"          = $jsonContent.OAuth2ClientSecret
 }
 
-$CompaniesWS = "Companies"
+$CompaniesWS = "GRIPSDirectPrintCompanyWS_GetCompanies"
+
+Clear-Host  # Clears the console
+
+# Ask user for the UserName that will be used to filter the companies
+do {
+    Clear-Host  # Clears the console
+
+    $UserName = Read-Host "Please enter your UserName (to filter the list of companies):"
+    $isValid = -not [string]::IsNullOrEmpty($UserName)
+    if (-not $isValid) {
+        Write-Host "Invalid entry. Please try again." -ForegroundColor Red
+        Start-Sleep -Seconds 2  # Give user time to read the message before clearing
+    }
+} while (-not $isValid)
 
 # Fetch the list of companies
-$Companies = (Invoke-BCWebService -Method Get -BaseURL $selectedBaseURL -WebServiceName $CompaniesWS -Authentication $Authentication).value
+$Body = "{""userName"": ""$UserName"" }"
 
-Return(1)
+$Companies = (Invoke-BCWebService -Method Post -BaseURL $selectedBaseURL -WebServiceName $CompaniesWS -Authentication $Authentication -Body $Body).value
 
+# Present the list of companies to the user and ask for a selection
+$title = "Company Selection"
+
+$Items = [ordered]@{}
+foreach ($Company in $Companies) {
+    $Items.Add($Company.Name, $Company.DisplayName)
+}
+
+$selectionResult = DisplayMenuAndReadSelection -Items $Items -Title $title
+$selectedCompany = $Companies[$selectionResult.Index].Name
+Write-Host "Selected Company: $($selectedCompany)"
+
+# Set Authentication using selected company
+$Authentication = @{
+    #"Company"                     = 'NAS Company' # Note: Must exist or be left empty if a Default Company is setup in the Service Tier. Only used for authentication as printers and jobs are PerCompany=false
+    "Company"                     = $selectedCompany
+
+    "BasicAuthLogin"              = $jsonContent.BasicAuthLogin;
+    "BasicAuthPassword"           = $(([Net.NetworkCredential]::new('', $credential.Password).Password))
+
+    "OAuth2CustomerAADIDOrDomain" = $jsonContent.OAuth2CustomerAADIDOrDomain
+    "OAuth2ClientID"              = $jsonContent.OAuth2ClientID
+    "OAuth2ClientSecret"          = $jsonContent.OAuth2ClientSecret
+}
+
+$RespCenterWS = "ResponsibilityCenters"
+
+# Fetch the list of companies
+$RespCenters = (Invoke-BCWebService -Method Get -BaseURL $selectedBaseURL -WebServiceName $RespCenterWS -Authentication $Authentication).value
+
+# Present the list of resonsibility centers to the user and ask for a selection
+$Items = [ordered]@{}
+$title = "Responsibility Center Selection"
+foreach ($RespCtr in $RespCenters) {
+    $Items.Add($RespCtr.Code, $RespCtr.Name)
+}
+
+$selectionResult = DisplayMenuAndReadSelection -Items $Items -Title $title
+$selectedRespCtr = $RespCenters[$selectionResult.Index].Code
+Write-Host "Selected Responsibility Center: $($selectedRespCtr)"
 # Write Company and BaseURL to userconfig.json
 $userConfigPath = "$installPath\userconfig.json"
 $userConfig = @{
-    Company = $companies | Out-GridView -Title "Select Company" -PassThru
-    BaseURL = $config.BaseUrl -f $selectedCountry, $selectedDatabase
+    Company = $selectedCompany
+    BaseURL = $selectedBaseURL 
+    RespCtr = $selectedRespCtr
 } | ConvertTo-Json -Depth 4
 $userConfig | Out-File -FilePath $userConfigPath -Encoding UTF8
 
