@@ -145,7 +145,7 @@ function Invoke-BCWebService {
 
         if (-not ([string]::IsNullOrEmpty($Authentication.Company))) {
             if ($Method -eq "Post") {
-                $URL = "$URL?company='$($Authentication.Company)'"
+                $URL = "$($URL)?company='$($Authentication.Company)'"
             }
         }
 
@@ -332,7 +332,7 @@ $Authentication = @{
     "OAuth2ClientSecret"          = $jsonContent.OAuth2ClientSecret
 }
 
-$CompaniesWS = "GRIPSDirectPrintCompanyWS_GetCompanies"
+$GetCompaniesWS = "GRIPSDirectPrintGeneralWS_GetCompanies"
 
 Clear-Host  # Clears the console
 
@@ -340,7 +340,7 @@ Clear-Host  # Clears the console
 do {
     Clear-Host  # Clears the console
 
-    $UserName = Read-Host "Please enter your UserName (to filter the list of companies):"
+    $UserName = Read-Host "Please enter your UserName (to filter the list of companies)"
     $isValid = -not [string]::IsNullOrEmpty($UserName)
     if (-not $isValid) {
         Write-Host "Invalid entry. Please try again." -ForegroundColor Red
@@ -349,20 +349,21 @@ do {
 } while (-not $isValid)
 
 # Fetch the list of companies
-$Body = "{""userName"": ""$UserName"" }"
+$Body = "{""userName"": $($UserName | ConvertTo-Json) }"
 
-$Companies = (Invoke-BCWebService -Method Post -BaseURL $selectedBaseURL -WebServiceName $CompaniesWS -Authentication $Authentication -Body $Body).value
+$Companies = (Invoke-BCWebService -Method Post -BaseURL $selectedBaseURL -WebServiceName $GetCompaniesWS -Authentication $Authentication -Body $Body).value
+$CompaniesObject = $Companies | ConvertFrom-Json
 
 # Present the list of companies to the user and ask for a selection
 $title = "Company Selection"
 
 $Items = [ordered]@{}
-foreach ($Company in $Companies) {
-    $Items.Add($Company.Name, $Company.DisplayName)
+foreach ($Company in $CompaniesObject.companies) {
+    $Items.Add($Company.Companyname, $Company.DisplayName)
 }
 
 $selectionResult = DisplayMenuAndReadSelection -Items $Items -Title $title
-$selectedCompany = $Companies[$selectionResult.Index].Name
+$selectedCompany = $selectionResult.Key
 Write-Host "Selected Company: $($selectedCompany)"
 
 # Set Authentication using selected company
@@ -378,20 +379,22 @@ $Authentication = @{
     "OAuth2ClientSecret"          = $jsonContent.OAuth2ClientSecret
 }
 
-$RespCenterWS = "ResponsibilityCenters"
+$GetRespCentersWS = "GRIPSDirectPrintGeneralWS_GetResponsibilityCenters"
 
-# Fetch the list of companies
-$RespCenters = (Invoke-BCWebService -Method Get -BaseURL $selectedBaseURL -WebServiceName $RespCenterWS -Authentication $Authentication).value
+
+# Fetch the list of responsibility centers
+$RespCenters = (Invoke-BCWebService -Method Post -BaseURL $selectedBaseURL -WebServiceName $GetRespCentersWS -Authentication $Authentication).value
+$RespCentersObject = $RespCenters | ConvertFrom-Json
 
 # Present the list of resonsibility centers to the user and ask for a selection
 $Items = [ordered]@{}
 $title = "Responsibility Center Selection"
-foreach ($RespCtr in $RespCenters) {
-    $Items.Add($RespCtr.Code, $RespCtr.Name)
+foreach ($RespCtr in $RespCentersObject.responsibilityCenters) {
+    $Items.Add($RespCtr.RespCenterCode, $RespCtr.RespCenterName)
 }
 
 $selectionResult = DisplayMenuAndReadSelection -Items $Items -Title $title
-$selectedRespCtr = $RespCenters[$selectionResult.Index].Code
+$selectedRespCtr = $selectionResult.Key
 Write-Host "Selected Responsibility Center: $($selectedRespCtr)"
 # Write Company and BaseURL to userconfig.json
 $userConfigPath = "$installPath\userconfig.json"
