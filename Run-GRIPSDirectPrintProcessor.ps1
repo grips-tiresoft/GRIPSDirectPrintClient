@@ -1,7 +1,8 @@
-﻿# Version: v1.0.17
+﻿# Version: v1.0.18
 
 param (
-    [string]$configFile = "$PSScriptRoot\config.json"
+    [string]$configFile = "$PSScriptRoot\config.json",
+    [string]$userConfigFile = "$PSScriptRoot\userconfig.json"
 )
 
 ### POWERSHELL ON WINDOWS ###
@@ -23,7 +24,6 @@ function Get-StoredCredential {
 $config = Get-Content $configFile | ConvertFrom-Json
 
 # Check if userconfig.json exists
-$userConfigFile = "$PSScriptRoot\userconfig.json"
 if (Test-Path -Path $userConfigFile -PathType Leaf) {
     # Load user configuration from userconfig.json
     $userConfig = Get-Content $userConfigFile | ConvertFrom-Json
@@ -63,15 +63,21 @@ $Authentication = @{
 #       - filter on RC when displaying printers page    
 # * DONE: Pick up default printer and use when no printer is specified
 # * DONE: Adapt all places where printers are displayed/selected and show normal printers page instead of Web Client Printers when Printing App is disabled
-# * Renumber objects according to GRIPS rules
+# * DONE: Renumber objects according to GRIPS rules - Viktoras says its OK to use 90000+
 # * DONE: Move Settings config.json
 # * DONE: Encrypt password using secret protected key read from the registry
 # * TODO: Create installation script to install processor as service using nssm
-#       - Should prompt for parameters during installation
-#       - List of URLs with by country - separate file to settings so can be modified centrally
-# * TODO: Make overrides for settings in config.json - load userconfig.json if exists
+#       - DONE: Should prompt for parameters during installation
+#       - DONE: List of URLs with by country - separate file to settings so can be modified centrally
+#       - TODO: Register file type for PDF signing
+#               cmd.exe /c assoc .signpdf=SignedPDFFile               
+#               cmd.exe /c ftype SignedPDFFile="""C:\Program Files\signotec\signoSign2\SignoSign2.exe""" """%1"""
+#       - TODO: Create an self-extracting archive with the script and the settings file:
+# * TODO: Clean up the transcript file - only keep the last 5000 entries 
+# * DONE: Make overrides for settings in config.json - load userconfig.json if exists
 # * DONE: Make self-updating - see info. from chatGPT saved in BC DirectPrinting folder
 # * DONE: Handle additional arguments e.g. "-sign" for Signosign (create field on GRIPSDirectPrintQueue table and fill from printer selection using events)
+# *     - Handled as a download so that software can option in user's session
 
 ### Configuration ###
 
@@ -493,3 +499,5 @@ while ($true) {
 }
 
 Stop-Transcript
+
+Exit 1 # Exit with non-zero exit code to force the service to restart
