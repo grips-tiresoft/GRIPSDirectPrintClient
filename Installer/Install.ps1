@@ -207,9 +207,6 @@ function Get-StoredCredential {
 # Define the path to the configuration file
 $configFilePath = "$ScriptPath\install.json"
 
-# Define the path to the NSSM executable
-$nssmPath = "$ScriptPath\nssm-2.24\win64\nssm.exe"
-
 # Check if the configuration file exists
 if (-Not (Test-Path -Path $configFilePath)) {
     Write-Error "Configuration file not found at path: $configFilePath"
@@ -404,6 +401,9 @@ $userConfig = @{
     RespCtr = $selectedRespCtr
 } | ConvertTo-Json -Depth 4
 $userConfig | Out-File -FilePath $userConfigPath -Encoding UTF8
+
+# Define the path to the NSSM executable
+$nssmPath = "$installPath\nssm-2.24\win64\nssm.exe"
 
 # Install the client service using NSSM
 $installArgs = "-ExecutionPolicy Bypass -File ""$installPath\Run-GRIPSDirectPrintProcessor.ps1"""

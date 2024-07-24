@@ -22,5 +22,7 @@
     "Delay": "2",
     "UpdateDelay": "300",
     "ReleaseCheckDelay": "600",
-    "ReleaseApiUrl": "https://api.github.com/repos/grips-tiresoft/GRIPSDirectPrint/releases/latest"
+    "ReleaseApiUrl": "https://api.github.com/repos/grips-tiresoft/GRIPSDirectPrint/releases/latest",
+    "TranscriptMaxAgeDays": "1",
+    "TranscriptRotationTimeMins": "2"
 }

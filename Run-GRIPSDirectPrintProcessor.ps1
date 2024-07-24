@@ -1,4 +1,26 @@
-﻿# Version: v1.0.18
+﻿# Version: v1.0.19
+
+# TODO: 
+# * DONE: Add RC to GRIPSDirectPrint
+#       - Pass to WS when adding updating printers
+#       - filter on RC when displaying printers page    
+# * DONE: Pick up default printer and use when no printer is specified
+# * DONE: Adapt all places where printers are displayed/selected and show normal printers page instead of Web Client Printers when Printing App is disabled
+# * DONE: Renumber objects according to GRIPS rules - Viktoras says its OK to use 90000+
+# * DONE: Move Settings config.json
+# * DONE: Encrypt password using secret protected key read from the registry
+# * TODO: Create installation script to install processor as service using nssm
+#       - DONE: Should prompt for parameters during installation
+#       - DONE: List of URLs with by country - separate file to settings so can be modified centrally
+#       - TODO: Register file type for PDF signing
+#               cmd.exe /c assoc .signpdf=SignedPDFFile               
+#               cmd.exe /c ftype SignedPDFFile="""C:\Program Files\signotec\signoSign2\SignoSign2.exe""" """%1"""
+#       - TODO: Create an self-extracting archive with the script and the settings file:
+# * DONE: Rotate the transcript file every so often and keep only the last n days
+# * DONE: Make overrides for settings in config.json - load userconfig.json if exists
+# * DONE: Make self-updating - see info. from chatGPT saved in BC DirectPrinting folder
+# * DONE: Handle additional arguments e.g. "-sign" for Signosign (create field on GRIPSDirectPrintQueue table and fill from printer selection using events)
+# *     - Handled as a download so that software can option in user's session
 
 param (
     [string]$configFile = "$PSScriptRoot\config.json",
@@ -57,28 +79,6 @@ $Authentication = @{
 }
 #
 
-# TODO: 
-# * DONE: Add RC to GRIPSDirectPrint
-#       - Pass to WS when adding updating printers
-#       - filter on RC when displaying printers page    
-# * DONE: Pick up default printer and use when no printer is specified
-# * DONE: Adapt all places where printers are displayed/selected and show normal printers page instead of Web Client Printers when Printing App is disabled
-# * DONE: Renumber objects according to GRIPS rules - Viktoras says its OK to use 90000+
-# * DONE: Move Settings config.json
-# * DONE: Encrypt password using secret protected key read from the registry
-# * TODO: Create installation script to install processor as service using nssm
-#       - DONE: Should prompt for parameters during installation
-#       - DONE: List of URLs with by country - separate file to settings so can be modified centrally
-#       - TODO: Register file type for PDF signing
-#               cmd.exe /c assoc .signpdf=SignedPDFFile               
-#               cmd.exe /c ftype SignedPDFFile="""C:\Program Files\signotec\signoSign2\SignoSign2.exe""" """%1"""
-#       - TODO: Create an self-extracting archive with the script and the settings file:
-# * TODO: Clean up the transcript file - only keep the last 5000 entries 
-# * DONE: Make overrides for settings in config.json - load userconfig.json if exists
-# * DONE: Make self-updating - see info. from chatGPT saved in BC DirectPrinting folder
-# * DONE: Handle additional arguments e.g. "-sign" for Signosign (create field on GRIPSDirectPrintQueue table and fill from printer selection using events)
-# *     - Handled as a download so that software can option in user's session
-
 ### Configuration ###
 
 # URLs for webservices:
@@ -125,6 +125,29 @@ $UpdateDelay = $config.UpdateDelay
 $ReleaseCheckDelay = $config.ReleaseCheckDelay
 
 ### End of Configuration ###
+
+# Function to start a new transcript with a timestamped filename
+function Start-MyTranscript {
+    param (
+        [string]$Path = "$ScriptPath\Transcripts",
+        [string]$Filename = "$ScriptNameWithoutExt"
+    )
+
+    if (-not (Test-Path -Path $Path -PathType Container)) {
+        New-Item -Path $Path -ItemType Directory | Out-Null
+    }
+
+    $timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
+    $transcriptPath = Join-Path -Path $Path -ChildPath "$($Filename)_$timestamp.Transcript.txt"
+    Start-Transcript -Path $transcriptPath | Out-Null
+
+    # Remove old transcript files
+    $transcriptPath = Join-Path -Path $Path -ChildPath "$($Filename)_*.Transcript.txt"
+    $transcripts = Get-ChildItem -Path $transcriptPath | Where-Object { $_.LastWriteTime -lt (Get-Date).AddDays(-$config.TranscriptMaxAgeDays) }
+    $transcripts | Remove-Item -Force
+
+    return [datetime]::Now
+}
 
 
 function Get-BasicAuthentication {
@@ -364,18 +387,19 @@ function Get-ScriptVersion {
     Write-Output "Script version: $global:currentVersion"
 }
 
-Start-Transcript -Path "$env:TEMP\GRIPSDirectPrintProcessor.log" -Append
-
 #House keeping
-$ErrorActionPreference = 'Continue'
-$LastPrinterUpdate = (Get-Date).AddSeconds(-$UpdateDelay) # Make sure the update is run immediately on startup of the script
-$LastReleaseCheck = (Get-Date).AddSeconds(-$ReleaseCheckDelay) # Make sure the release check is run immediately on startup of the script
-
 # Get the full path of the directory containing the script
 $ScriptPath = $PSScriptRoot
 
 # Get the filename of the script
 $ScriptName = $MyInvocation.MyCommand.Name
+$ScriptNameWithoutExt = [System.IO.Path]::GetFileNameWithoutExtension($ScriptName)
+
+$LastTranscriptRotation = Start-MyTranscript 
+
+$ErrorActionPreference = 'Continue'
+$LastPrinterUpdate = (Get-Date).AddSeconds(-$UpdateDelay) # Make sure the update is run immediately on startup of the script
+$LastReleaseCheck = (Get-Date).AddSeconds(-$ReleaseCheckDelay) # Make sure the release check is run immediately on startup of the script
 
 # To combine them into the full path to the script file
 $FullScriptPath = Join-Path -Path $ScriptPath -ChildPath $ScriptName
@@ -396,6 +420,12 @@ while ($true) {
         Update-Release
     }
 
+    # Rotate the transcript file when needed
+    if ((Get-Date) -gt $LastTranscriptRotation.AddMinutes($config.TranscriptRotationTimeMins)) {
+        Stop-Transcript
+        $LastTranscriptRotation = Start-MyTranscript
+    }
+
     #Fetch printers on this host from BC    
     Clear-Variable -Name "BCPrinters" -ErrorAction SilentlyContinue
     $BCPrinters = (Invoke-BCWebService -Method Get -BaseURL $BaseURL -WebServiceName $PrintersWS -Filter "HostID eq '$env:COMPUTERNAME'" -Authentication $Authentication).value
@@ -411,7 +441,7 @@ while ($true) {
         }
         Write-Host "$(Get-Date -Format "yyyy-MM-dd HH:mm:ss") Adding new printer in BC: $($Printer.Name)" -ForegroundColor Yellow
         Invoke-BCWebService -Method Post -BaseURL $BaseURL -WebServiceName $PrintersWS -Authentication $Authentication `
-            -Body "{""HostID"":""$($env:COMPUTERNAME)"",""PrinterID"":""$(SafePrinterName($Printer.Name))"",""ResponsibilityCenter"":""$($RespCtr)"",""DefaultPrinter"":""$isDefault""}" #| Out-Null
+            -Body "{""HostID"":""$($env:COMPUTERNAME)"",""PrinterID"":""$(SafePrinterName($Printer.Name))"",""ResponsibilityCenter"":""$($RespCtr)"",""DefaultPrinter"":""$isDefault""}" | Out-Null
     }
           
     #Update existing printers in BC
@@ -428,7 +458,7 @@ while ($true) {
             }
             Write-Host "$(Get-Date -Format "yyyy-MM-dd HH:mm:ss") Updating printer in BC (RowNo: $($BCPrinter.RowNo)): $(SafePrinterName($Printer.Name))" -ForegroundColor Yellow   
             Invoke-BCWebService -Method Patch -BaseURL $BaseURL -WebServiceName $PrintersWS -DirectLookup $BCPrinter.RowNo -ETag $BCPrinter."@odata.etag" -Authentication $Authentication `
-                -Body "{""HostID"":""$env:COMPUTERNAME"",""PrinterID"":""$(SafePrinterName($Printer.Name))"",""ResponsibilityCenter"":""$RespCtr"",""DefaultPrinter"":""$isDefault""}" #| Out-Null
+                -Body "{""HostID"":""$env:COMPUTERNAME"",""PrinterID"":""$(SafePrinterName($Printer.Name))"",""ResponsibilityCenter"":""$RespCtr"",""DefaultPrinter"":""$isDefault""}" | Out-Null
         }
         $LastPrinterUpdate = Get-Date
         Write-Host "$(Get-Date -Format "yyyy-MM-dd HH:mm:ss") Looking for print jobs every $Delay seconds, updating printers every $UpdateDelay seconds..." -ForegroundColor White   
