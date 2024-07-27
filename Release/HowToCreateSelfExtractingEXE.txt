@@ -1,0 +1,15 @@
+1. Copy 'InstallFiles' folder to local drive e.g. C:\Temp
+2. Use 7zr.exe (see lzma2200\bin) to create .7z archive of Install Files e.g.
+7zr.exe a -r c:\temp\GRIPSWebPrintingApplicationInstaller.7z C:\Temp\InstallFiles\*.*
+3. Create/Modify '.config.txt' file - this contains config for SFX EXE
+e.g.
+;!@Install@!UTF-8!
+Title="GRIPSDirectPrint Client Installer"
+BeginPrompt="Do you want to install the GRIPS Web Printing Application?"
+ExecuteFile="Powershell.exe"
+ExecuteParameters="-ExecutionPolicy Bypass -File .\Deploy-Application.ps1"
+;!@InstallEnd@!
+For more info. on config file options see lzma2200\doc\installer.txt
+4. Copy 7zSD.sfx from lzma2200\bin to installer folder
+5. Create .EXE by copying 3 files e.g.
+copy /b 7zSD.sfx + .\GRIPSWebPrintingApplicationInstaller.config.txt + .\GRIPSWebPrintingApplicationInstaller.7z GRIPSWebPrintingApplicationInstaller.exe

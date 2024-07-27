@@ -5,6 +5,9 @@
     "OAuth2CustomerAADIDOrDomain": "1234",
     "OAuth2ClientID": "1234",
     "OAuth2ClientSecret": "1234",
+    "Sign_exe": "C:\\Program Files\\signotec\\signoSign2\\SignoSign2.exe",
+    "Sign_params" : "\"%1\"",
+    "Sign_ext": ".signpdf",
     "Countries": {
         "TEST": {
             "Name": "Deutchland (TEST)",

@@ -1,7 +1,3 @@
-$ScriptPath = $PSScriptRoot
-
-Start-Transcript -Path "$ScriptPath\install.log" -Append
-
 function DisplayMenuAndReadSelection {
     param (
         [System.Collections.Specialized.OrderedDictionary]$Items,
@@ -27,7 +23,7 @@ function DisplayMenuAndReadSelection {
 
         # Prompt for user input
         $selection = Read-Host "Please select an option ($($StartIndex)-$($StartIndex+$Items.Count-1))"
-
+1
         # Validate selection
         $selInt = $selection -as [int]
         $isValid = ($selInt -ge $StartIndex) -and ($selInt -le $($StartIndex + $Items.Count - 1))
@@ -201,6 +197,49 @@ function Get-StoredCredential {
     }
 }
 
+function Copy-ScriptFolder {
+    # Copy the extracted files from the sub-folder to the destination directory
+    $resolvedPath = Resolve-Path -Path "$ScriptPath\..\"
+
+    # Ensure the destination directory exists
+    if (-Not (Test-Path -Path $installPath)) {
+        New-Item -ItemType Directory -Path $installPath
+    }
+
+    # Copy the contents of the source directory to the destination directory
+    Copy-Item -Path "$resolvedPath\*" -Destination $installPath -Recurse -Force
+
+    # Set ACL to allow Users full control
+    $acl = Get-Acl -Path $installPath
+    $accessRule = New-Object System.Security.AccessControl.FileSystemAccessRule("Users", "FullControl", "ContainerInherit, ObjectInherit", "None", "Allow")
+    $acl.SetAccessRule($accessRule)
+    Set-Acl -Path $installPath -AclObject $acl
+}
+
+
+#TODO: Load localized strings from a resource file
+#Import-LocalizedData -BindingVariable strings -FileName GRIPSDirectPrint-InstallStrings.psd1 -BaseDirectory ".\Resources"
+
+$user = [Security.Principal.WindowsIdentity]::GetCurrent()
+$isAdmin = (New-Object Security.Principal.WindowsPrincipal $user).IsInRole([Security.Principal.WindowsBuiltinRole]::Administrator)
+
+if (-not $isAdmin) {
+    #$NotAdminError = "Script is not running with administrative privileges. GRIPSDirectPrint client is not installed."
+    #Write-Host -ForegroundColor Red $NotAdminError
+    #Start-Sleep -s 5
+    #Write-Error -Message $NotAdminError -ErrorAction Stop
+    $arguments = "& '" + $myinvocation.mycommand.definition + "'"
+    Start-Process powershell -Verb runAs -ArgumentList $arguments
+    exit
+}
+
+$ScriptPath = $PSScriptRoot
+
+Start-Transcript -Path "$ScriptPath\install.log" -Append
+
+Write-Host "Starting GRIPSDirectPrint Client installation..." -ForegroundColor White
+Write-Host  
+
 # Set PowerShell console to use UTF-8 encoding
 [Console]::InputEncoding = [Console]::OutputEncoding = New-Object System.Text.UTF8Encoding
 
@@ -216,50 +255,40 @@ if (-Not (Test-Path -Path $configFilePath)) {
 # Load configuration from JSON file
 $config = Get-Content $configFilePath -Encoding UTF8 | ConvertFrom-Json
 
-$releaseApiUrl = $config.ReleaseApiUrl;
+#$releaseApiUrl = $config.ReleaseApiUrl;
 $installPath = $config.InstallPath;
 
-Write-Host "Downloading client..." -ForegroundColor White
+#Write-Host "Downloading client..." -ForegroundColor White
 
-$LatestRelease = Invoke-RestMethod -Uri $releaseApiUrl -Method Get
+#$LatestRelease = Invoke-RestMethod -Uri $releaseApiUrl -Method Get
     
-$TempZipFile = [System.IO.Path]::GetTempFileName() + ".zip"
-$TempExtractPath = [System.IO.Path]::GetTempPath() + [System.Guid]::NewGuid().ToString()
+#$TempZipFile = [System.IO.Path]::GetTempFileName() + ".zip"
+#$TempExtractPath = [System.IO.Path]::GetTempPath() + [System.Guid]::NewGuid().ToString()
 
 # Get the URL of the source code zip
-$downloadUrl = $LatestRelease.zipball_url
+#$downloadUrl = $LatestRelease.zipball_url
 
 # Download the ZIP file containing the new script version and other files
-Invoke-WebRequest -Uri $downloadUrl -OutFile $TempZipFile
+#Invoke-WebRequest -Uri $downloadUrl -OutFile $TempZipFile
 
 # Extract the ZIP file to a temporary directory
-Expand-Archive -Path $TempZipFile -DestinationPath $TempExtractPath
+#Expand-Archive -Path $TempZipFile -DestinationPath $TempExtractPath
 
 # Find the sub-folder in the extracted directory
-$extractedSubFolder = Get-ChildItem -Path $TempExtractPath | Where-Object { $_.PSIsContainer } | Select-Object -First 1
+#$extractedSubFolder = Get-ChildItem -Path $TempExtractPath | Where-Object { $_.PSIsContainer } | Select-Object -First 1
 
 # Clean up temporary files
-Remove-Item -Path $TempZipFile -Force
+#Remove-Item -Path $TempZipFile -Force
 
-# Copy the extracted files from the sub-folder to the destination directory
-$resolvedPath = Resolve-Path -Path $extractedSubFolder.FullName
+Copy-ScriptFolder
 
-# Ensure the destination directory exists
-if (-Not (Test-Path -Path $installPath)) {
-    New-Item -ItemType Directory -Path $installPath
-}
+Stop-Transcript
 
-# Copy the contents of the source directory to the destination directory
-Copy-Item -Path "$resolvedPath\*" -Destination $installPath -Recurse -Force
+$ScriptPath = "$installPath\Installer"
 
-# Set ACL to allow Users full control
-$acl = Get-Acl -Path $installPath
-$accessRule = New-Object System.Security.AccessControl.FileSystemAccessRule("Users", "FullControl", "ContainerInherit, ObjectInherit", "None", "Allow")
-$acl.SetAccessRule($accessRule)
-Set-Acl -Path $installPath -AclObject $acl
+Start-Transcript -Path "$ScriptPath\install.log" -Append
 
-# TODO: 
-$installConfigPath = "$resolvedPath\Installer\install.json"
+$installConfigPath = "$ScriptPath\install.json"
 
 # Load configuration from JSON file
 $jsonContent = Get-Content $installConfigPath -Encoding UTF8 | ConvertFrom-Json
@@ -309,10 +338,22 @@ $selectedCompany = $selectedCountry.Databases.$selectedDatabase.Company
 
 Write-Host "Selected Database: $($selectedDatabase) ($selectedBaseURL)"
 
-# Get decryption key from registry
+# Write decryption key to the registry
+[string]$registryKeyPath = "HKLM:\Software\GRIPS\l02fKiUY"
+[string]$valueName = "l02fKiUY"
+[string]$valueData = Get-Content "$ScriptPath\l02fKiUY\l02fKiUY.key"
+
+# Check if the registry key exists, and create it if not
+if (-not (Test-Path -Path $registryKeyPath)) {
+    New-Item -Path $registryKeyPath -Force
+}
+
+# Use Set-ItemProperty to write the value to the registry
+Set-ItemProperty -Path $registryKeyPath -Name $valueName -Value $valueData | Out-Null
+
 $key = @(((Get-ItemProperty HKLM:\Software\GRIPS\l02fKiUY).l02fKiUY) -split ",")
 
-$credFile = "$resolvedPath\$($jsonContent.BasicAuthLogin).TXT"
+$credFile = "$installPath\$($jsonContent.BasicAuthLogin).TXT"
 
 $credential = Get-StoredCredential -credFile $credFile -key $key
 
@@ -402,8 +443,15 @@ $userConfig = @{
 } | ConvertTo-Json -Depth 4
 $userConfig | Out-File -FilePath $userConfigPath -Encoding UTF8
 
+# Create the file association for .signpdf files
+Write-Host "cmd.exe /c assoc $($config.Sign_ext)=SignedPDFFile"
+& cmd.exe /c assoc $($config.Sign_ext)=SignedPDFFile 
+
+Write-Host "cmd.exe /c ftype SignedPDFFile=""""$($config.Sign_exe)"""" """"$($config.Sign_params)"""""
+& cmd.exe /c ftype SignedPDFFile="""$($Config.Sign_exe)""" ""$config.Sign_params""
+
 # Define the path to the NSSM executable
-$nssmPath = "$installPath\nssm-2.24\win64\nssm.exe"
+$nssmPath = "$installPath\Installer\nssm-2.24\win64\nssm.exe"
 
 # Install the client service using NSSM
 $installArgs = "-ExecutionPolicy Bypass -File ""$installPath\Run-GRIPSDirectPrintProcessor.ps1"""
@@ -413,8 +461,10 @@ $installArgs = "-ExecutionPolicy Bypass -File ""$installPath\Run-GRIPSDirectPrin
 Start-Service -Name "GRIPSDirectPrint Client Service"
 
 # Clean up the extracted temporary directory
-Remove-Item -Path $TempExtractPath -Recurse -Force
+#Remove-Item -Path $TempExtractPath -Recurse -Force
 
 Write-Host "Installation completed"
+
+Start-Sleep -Seconds 5
 
 Stop-Transcript

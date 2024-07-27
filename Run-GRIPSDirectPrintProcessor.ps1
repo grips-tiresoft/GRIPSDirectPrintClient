@@ -1,4 +1,4 @@
-﻿# Version: v1.0.19
+﻿# Version: v1.0.20
 
 # TODO: 
 # * DONE: Add RC to GRIPSDirectPrint
@@ -12,15 +12,16 @@
 # * TODO: Create installation script to install processor as service using nssm
 #       - DONE: Should prompt for parameters during installation
 #       - DONE: List of URLs with by country - separate file to settings so can be modified centrally
-#       - TODO: Register file type for PDF signing
+#       - DONE: Register file type for PDF signing
 #               cmd.exe /c assoc .signpdf=SignedPDFFile               
 #               cmd.exe /c ftype SignedPDFFile="""C:\Program Files\signotec\signoSign2\SignoSign2.exe""" """%1"""
-#       - TODO: Create an self-extracting archive with the script and the settings file:
+#       - DONE: Create an self-extracting archive with the script and the settings file:
 # * DONE: Rotate the transcript file every so often and keep only the last n days
 # * DONE: Make overrides for settings in config.json - load userconfig.json if exists
 # * DONE: Make self-updating - see info. from chatGPT saved in BC DirectPrinting folder
 # * DONE: Handle additional arguments e.g. "-sign" for Signosign (create field on GRIPSDirectPrintQueue table and fill from printer selection using events)
 # *     - Handled as a download so that software can option in user's session
+# * TODO: Localize the strings - see grips.net\WebServerSidePrinter\NAVPrintingApplication\GRIPSWebPrintingApplication-Install.ps1
 
 param (
     [string]$configFile = "$PSScriptRoot\config.json",
