@@ -48,6 +48,10 @@
         "CH": {
             "Name": "Schweiz",
             "Databases": {
+                "GRIPS_CH24_TEST": {
+                    "BaseURL": "https://testnav.gripsportal.com:49000/CH24_TEST_WS/ODataV4/",
+                    "Company": "GRIPS_CH_TEST"
+                },
                 "GRIPS_CH_PROD": {
                     "BaseURL": "https://ch.gripsportal.com:30221/CH_PROD_WS/ODataV4/",
                     "Company": "NAS Company PROD"
