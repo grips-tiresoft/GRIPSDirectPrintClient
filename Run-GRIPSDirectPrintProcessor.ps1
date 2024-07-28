@@ -1,4 +1,4 @@
-﻿# Version: v1.0.21
+﻿# Version: v1.0.22
 
 # TODO: 
 # * DONE: Add RC to GRIPSDirectPrint
@@ -348,24 +348,36 @@ function Update-Check {
 function Update-Release {
     # Read the path of the extracted folder
     $extractedSubFolder = Get-Content -Path $updateSignalFile
+	
+	Write-Output "$(Get-Date -Format "yyyy-MM-dd HH:mm:ss") Updating release from $extractedSubFolder"
 
     # Backup the current script directory
     $backupScriptDirectory = "$ScriptPath.bak"
+	
+	Write-Host "$(Get-Date -Format "yyyy-MM-dd HH:mm:ss") Backup script folder: $backupScriptDirectory"
+	
     if (Test-Path -Path $backupScriptDirectory) {
         Remove-Item -Path $backupScriptDirectory -Recurse -ErrorAction SilentlyContinue
     }
     
+	Write-Output "$(Get-Date -Format "yyyy-MM-dd HH:mm:ss") Backing up current script folder from $ScriptPath to $backupScriptDirectory"
     # Copy the script directory to the backup directory
-    Copy-Item -Path $ScriptPath -Destination $backupScriptDirectory -Recurse -Force
-
+    #Copy-Item -Path $ScriptPath -Destination $backupScriptDirectory -Recurse -Force -Exclude '$Recycle.Bin'
+	$robocopyCommand = @"
+robocopy "$ScriptPath" "$backupScriptDirectory" /E /XD '`$Recycle.Bin'
+"@
+	Invoke-Expression $robocopyCommand
+	
     # Copy the extracted files from the sub-folder to the destination directory
     $resolvedPath = Resolve-Path -Path $extractedSubFolder
+	
+	Write-Output "$(Get-Date -Format "yyyy-MM-dd HH:mm:ss") Copying new script folder from $resolvedPath to $ScriptPath"
     Copy-Item -Path "$resolvedPath\*" -Destination $ScriptPath -Recurse -Force
 
     Remove-Item -Path $updateSignalFile -Force
 
     Get-ScriptVersion -ScriptPath $FullScriptPath
-    Write-Output "Script updated to version $global:currentVersion."
+    Write-Output "$(Get-Date -Format "yyyy-MM-dd HH:mm:ss") Script updated to version $global:currentVersion."
 
     # Exit the script with non-zero exit code to force the service to restart
     Exit 1
@@ -405,7 +417,7 @@ $LastReleaseCheck = (Get-Date).AddSeconds(-$ReleaseCheckDelay) # Make sure the r
 # To combine them into the full path to the script file
 $FullScriptPath = Join-Path -Path $ScriptPath -ChildPath $ScriptName
 
-Write-Host "$(Get-Date -Format "yyyy-MM-dd HH:mm:ss") Script version $(Get-ScriptVersion -ScriptPath $FullScriptPath)"
+Get-ScriptVersion -ScriptPath $FullScriptPath
 
 # Define update signal file
 $updateSignalFile = "$ScriptPath\update_ready.txt"
