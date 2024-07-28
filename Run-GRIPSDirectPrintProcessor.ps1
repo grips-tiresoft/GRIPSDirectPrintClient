@@ -1,4 +1,4 @@
-﻿# Version: v1.0.22
+﻿# Version: v1.0.23
 
 # TODO: 
 # * DONE: Add RC to GRIPSDirectPrint
@@ -417,7 +417,7 @@ $LastReleaseCheck = (Get-Date).AddSeconds(-$ReleaseCheckDelay) # Make sure the r
 # To combine them into the full path to the script file
 $FullScriptPath = Join-Path -Path $ScriptPath -ChildPath $ScriptName
 
-Get-ScriptVersion -ScriptPath $FullScriptPath
+Write-Host "Starting up - current script version: $(Get-ScriptVersion -ScriptPath $FullScriptPath)"
 
 # Define update signal file
 $updateSignalFile = "$ScriptPath\update_ready.txt"
