@@ -405,7 +405,7 @@ $LastReleaseCheck = (Get-Date).AddSeconds(-$ReleaseCheckDelay) # Make sure the r
 # To combine them into the full path to the script file
 $FullScriptPath = Join-Path -Path $ScriptPath -ChildPath $ScriptName
 
-Get-ScriptVersion -ScriptPath $FullScriptPath
+Write-Host "$(Get-Date -Format "yyyy-MM-dd HH:mm:ss") Script version $(Get-ScriptVersion -ScriptPath $FullScriptPath)"
 
 # Define update signal file
 $updateSignalFile = "$ScriptPath\update_ready.txt"
