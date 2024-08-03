@@ -52,6 +52,10 @@
                     "BaseURL": "https://testnav.gripsportal.com:49000/CH24_TEST_WS/ODataV4/",
                     "Company": "GRIPS_CH_TEST"
                 },
+                "GRIPS_CH24_DEV (Companial)": {
+                    "BaseURL": "https://st-145410.dynamicstocloud.com:1133/ST-145410-DEV/ODataV4/",
+                    "Company": "GRIPS_CH_TEST"
+                },
                 "GRIPS_CH_PROD": {
                     "BaseURL": "https://ch.gripsportal.com:30221/CH_PROD_WS/ODataV4/",
                     "Company": "NAS Company PROD"
