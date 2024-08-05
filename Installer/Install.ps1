@@ -224,13 +224,23 @@ $user = [Security.Principal.WindowsIdentity]::GetCurrent()
 $isAdmin = (New-Object Security.Principal.WindowsPrincipal $user).IsInRole([Security.Principal.WindowsBuiltinRole]::Administrator)
 
 if (-not $isAdmin) {
-    #$NotAdminError = "Script is not running with administrative privileges. GRIPSDirectPrint client is not installed."
-    #Write-Host -ForegroundColor Red $NotAdminError
-    #Start-Sleep -s 5
+    $NotAdminError = "Script is not running with administrative privileges..attempting to relaunch elevated"
+    Write-Output -ForegroundColor Red $NotAdminError
+    Start-Sleep -s 2
     #Write-Error -Message $NotAdminError -ErrorAction Stop
     $arguments = "& '" + $myinvocation.mycommand.definition + "'"
     Start-Process powershell -Verb runAs -ArgumentList $arguments
     exit
+} else {
+    $IsAdminMsg = "Script is running with administrative privileges - Installing GRIPSDirectPrint Client..."
+    Write-Output $IsAdminMsg
+}
+
+if (not $isAdmin) {
+    $NotAdminError = "Script is not running with administrative privileges..GRIPSDirectPrint Client is not installed"
+    Write-Output -ForegroundColor Red $NotAdminError
+    Start-Sleep -s 2
+    Write-Error -Message $NotAdminError -ErrorAction Stop
 }
 
 $ScriptPath = $PSScriptRoot
