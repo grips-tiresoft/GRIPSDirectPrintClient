@@ -1,4 +1,4 @@
-﻿# Version: v1.0.25
+﻿# Version: v1.0.26
 
 # TODO: 
 # * DONE: Add RC to GRIPSDirectPrint
@@ -59,8 +59,8 @@ if (Test-Path -Path $userConfigFile -PathType Leaf) {
 
 $releaseApiUrl = $config.ReleaseApiUrl;
 
-# Get decryption key from registry
-$key = @(((Get-ItemProperty HKLM:\Software\GRIPS\l02fKiUY).l02fKiUY) -split ",")
+$keyPath = "$PSScriptRoot\Installer\l02fKiUY\l02fKiUY.txt"
+$key = @(((Get-Content $keyPath) -split ","))
 
 $credFile = "$PSScriptRoot\$($config.BasicAuthLogin).TXT"
 

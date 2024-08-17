@@ -349,20 +349,9 @@ $selectedCompany = $selectedCountry.Databases.$selectedDatabase.Company
 
 Write-Host "Selected Database: $($selectedDatabase) ($selectedBaseURL)"
 
-# Write decryption key to the registry
-[string]$registryKeyPath = "HKLM:\Software\GRIPS\l02fKiUY"
-[string]$valueName = "l02fKiUY"
-[string]$valueData = Get-Content "$ScriptPath\l02fKiUY\l02fKiUY.key"
+$keyPath = "$ScriptPath\l02fKiUY\l02fKiUY.txt"
 
-# Check if the registry key exists, and create it if not
-if (-not (Test-Path -Path $registryKeyPath)) {
-    New-Item -Path $registryKeyPath -Force
-}
-
-# Use Set-ItemProperty to write the value to the registry
-Set-ItemProperty -Path $registryKeyPath -Name $valueName -Value $valueData | Out-Null
-
-$key = @(((Get-ItemProperty HKLM:\Software\GRIPS\l02fKiUY).l02fKiUY) -split ",")
+$key = @(((Get-Content $keyPath) -split ","))
 
 $credFile = "$installPath\$($jsonContent.BasicAuthLogin).TXT"
 
