@@ -222,8 +222,9 @@ function Copy-ScriptFolder {
 
 $user = [Security.Principal.WindowsIdentity]::GetCurrent()
 $isAdmin = (New-Object Security.Principal.WindowsPrincipal $user).IsInRole([Security.Principal.WindowsBuiltinRole]::Administrator)
+#$isAdmin = $true
 
-if (-not $isAdmin) {
+if (-Not $isAdmin) {
     $NotAdminError = "Script is not running with administrative privileges..attempting to relaunch elevated"
     Write-Output -ForegroundColor Red $NotAdminError
     Start-Sleep -s 2
@@ -236,7 +237,7 @@ if (-not $isAdmin) {
     Write-Output $IsAdminMsg
 }
 
-if (not $isAdmin) {
+if (-Not $isAdmin) {
     $NotAdminError = "Script is not running with administrative privileges..GRIPSDirectPrint Client is not installed"
     Write-Output -ForegroundColor Red $NotAdminError
     Start-Sleep -s 2
