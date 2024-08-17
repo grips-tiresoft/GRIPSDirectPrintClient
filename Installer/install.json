@@ -61,6 +61,15 @@
                     "Company": "NAS Company PROD"
                 }
             }
-        }
-    }
+        },
+        "NL": {
+            "Name": "Nederland",
+            "Databases": {
+                "NL24 DEV (Companial)": {
+                    "BaseURL": "https://st-145404.dynamicstocloud.com:1113/ST-145404-DEV/ODataV4/",
+                    "Company": "NAS Company"
+                }
+            }
+        },
+   }
 }
