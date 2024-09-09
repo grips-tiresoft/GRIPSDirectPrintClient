@@ -3,3 +3,4 @@ Transcripts/*
 Release/GRIPSDirectPrintClientInstaller.exe
 Release/GRIPSDirectPrintClientInstaller.7z
 .vscode/launch.json
+userconfig.json
