@@ -444,8 +444,8 @@ $userConfig = @{
 $userConfig | Out-File -FilePath $userConfigPath -Encoding UTF8
 
 # Create the file association for .signpdf files
-Write-Host "cmd.exe /c assoc $($config.Sign_ext)=SignedPDFFile"
-& cmd.exe /c assoc $($config.Sign_ext)=SignedPDFFile 
+Write-Host "cmd.exe /c ""assoc $($config.Sign_ext)=SignedPDFFile"""
+& cmd.exe /c "assoc $($config.Sign_ext)=SignedPDFFile"
 
 Write-Host "cmd.exe /c ftype SignedPDFFile=""""$($config.Sign_exe)"""" """"$($config.Sign_params)"""""
 & cmd.exe /c ftype SignedPDFFile="""$($Config.Sign_exe)""" ""$config.Sign_params""
