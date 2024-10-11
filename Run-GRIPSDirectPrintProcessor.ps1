@@ -1,4 +1,4 @@
-﻿# Version: v1.0.26
+﻿# Version: v1.0.27
 
 # TODO: 
 # * DONE: Add RC to GRIPSDirectPrint
@@ -9,7 +9,7 @@
 # * DONE: Renumber objects according to GRIPS rules - Viktoras says its OK to use 90000+
 # * DONE: Move Settings config.json
 # * DONE: Encrypt password using secret protected key read from the registry
-# * TODO: Create installation script to install processor as service using nssm
+# * DONE: Create installation script to install processor as service using nssm
 #       - DONE: Should prompt for parameters during installation
 #       - DONE: List of URLs with by country - separate file to settings so can be modified centrally
 #       - DONE: Register file type for PDF signing
