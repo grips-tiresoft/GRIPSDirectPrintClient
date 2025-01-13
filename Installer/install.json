@@ -62,6 +62,15 @@
                 }
             }
         },
+        "IT": {
+            "Name": "Italia",
+            "Databases": {
+                "IT24 TEST": {
+                    "BaseURL": "https://st-145391.dynamicstocloud.com:1113/ST-145391-DEV/ODataV4/",
+                    "Company": "Playground"
+                }
+            }
+        },
         "NL": {
             "Name": "Nederland",
             "Databases": {
