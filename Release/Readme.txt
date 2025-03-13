@@ -4,7 +4,7 @@ Before running, clone the grips-signtool repo from https://github.com/goodyear/g
 This should be cloned to same parent folder as this one.
 If this is not done then code-signing will fail.
 
-Make sure any changes to script are resigned:
+If you change anything, always increase Script version at the start of Run-GRIPSDirectPrintProcessor.ps1 and make sure the script is resigned:
 .\CreateSignedScript.ps1 -Path .\Run-GRIPSDirectPrintProcessor.ps1
 
 Copy GRIPSDirectPrintClientInstaller.exe to target machine and run as administrator (should prompt for admin permissions if run normally)
