@@ -7,6 +7,9 @@ If this is not done then code-signing will fail.
 If you change anything, always increase Script version at the start of Run-GRIPSDirectPrintProcessor.ps1 and make sure the script is resigned:
 .\CreateSignedScript.ps1 -Path .\Run-GRIPSDirectPrintProcessor.ps1
 
+Make sure to run it from the Release folder or pass the parameter for the folder.
+e.g. ...GRIPSDirectPrintClient\.\Release\GenerateInstaller.bat .\Release
+
 Copy GRIPSDirectPrintClientInstaller.exe to target machine and run as administrator (should prompt for admin permissions if run normally)
 
 Once the installer EXE is created, create new release on https://github.com/grips-tiresoft/GRIPSDirectPrintClient/releases and upload the installer EXE.

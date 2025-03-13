@@ -2,6 +2,7 @@ echo on
 if not "%1"=="" cd %1
 del .\GRIPSDirectPrintClientInstaller.7z
 del .\GRIPSDirectPrintClientInstaller.exe
+del "%temp%\InstallFiles\*.*"
 xcopy /s /i ..\*.* "%temp%\InstallFiles"
 rem md "%temp%\InstallFiles\Resources"
 rem xcopy ..\bin\Release\Resources\*.psd1 "%temp%\InstallFiles\Resources" /S
