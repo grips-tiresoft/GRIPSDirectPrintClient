@@ -11,6 +11,7 @@
         "OneNote (Desktop)",
         "OneNote for Windows 10",
         "Microsoft XPS Document Writer",
+        "Microsoft Print to PDF",
         "Fax"
     ],
     "PDFPrinter_exe": "SumatraPDF\\SumatraPDF-3.4.6-32.exe",

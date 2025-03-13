@@ -79,6 +79,24 @@
                     "Company": "NAS Company"
                 }
             }
+        },
+        "PL": {
+            "Name": "Polska",
+            "Databases": {
+                "GRIPS_PL_PROD": {
+                    "BaseURL": "https://pl.gripsportal.com:30222/PL_PROD_WS/ODataV4/",
+                    "Company": "NAS Company PROD"
+                },
+                "GRIPS_PL_PROD2": {
+                    "BaseURL": "https://pl.gripsportal.com:30223/PL_PROD2_WS/ODataV4/",
+                    "Company": "NAS Company PROD2"
+                },
+                "GRIPS_PL_PROD3": {
+                    "BaseURL": "https://pl.gripsportal.com:30224/PL_PROD3_WS/ODataV4/",
+                    "Company": "NAS Company PROD3"
+                }
+            }
         }
+
     }
 }
