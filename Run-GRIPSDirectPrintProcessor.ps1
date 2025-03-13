@@ -1,4 +1,4 @@
-﻿# Version: v1.0.30
+﻿# Version: v1.0.31
 
 # TODO: 
 # * DONE: Add RC to GRIPSDirectPrint
