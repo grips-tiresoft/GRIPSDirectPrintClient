@@ -68,6 +68,10 @@
                 "IT24 TEST": {
                     "BaseURL": "https://st-145391.dynamicstocloud.com:1103/ST-145391-DEV/ODataV4/",
                     "Company": "Playground"
+                },
+                "IT": {
+                    "BaseURL": "https://grips-it.dynamicstocloud.com:1103/ST-149969-DEV/ODataV4/",
+                    "Company": "NAS Company"
                 }
             }
         },
