@@ -23,7 +23,7 @@ function DisplayMenuAndReadSelection {
 
         # Prompt for user input
         $selection = Read-Host "Please select an option ($($StartIndex)-$($StartIndex+$Items.Count-1))"
-1
+        1
         # Validate selection
         $selInt = $selection -as [int]
         $isValid = ($selInt -ge $StartIndex) -and ($selInt -le $($StartIndex + $Items.Count - 1))
@@ -220,6 +220,161 @@ function Copy-ScriptFolder {
 #TODO: Load localized strings from a resource file
 #Import-LocalizedData -BindingVariable strings -FileName GRIPSDirectPrint-InstallStrings.psd1 -BaseDirectory ".\Resources"
 
+function Install-GRIPSDirectPrintClientService {
+    # Load configuration from JSON file
+    $jsonContent = Get-Content $installConfigPath -Encoding UTF8 | ConvertFrom-Json
+
+    # Extract countries and prepare the options for PromptForChoice
+    $Items = [ordered]@{}
+
+    foreach ($countryCode in $jsonContent.Countries.PSObject.Properties.Name) {
+        $country = $jsonContent.Countries.$countryCode
+        $Items.Add("$countryCode", "$($country.Name)")
+    }
+
+    # Present the countries to the user and ask for a selection
+    $title = "Country Selection"
+    #$selectedOption = $Host.UI.PromptForChoice($title, $message, $options, 0)
+    $selectionResult = DisplayMenuAndReadSelection -Items $Items -Title $title
+
+    # Convert the selection to the country code
+    $selectedCountryCode = $jsonContent.Countries.PSObject.Properties.Name[$selectionResult.Index]
+    $selectedCountry = $jsonContent.Countries.$selectedCountryCode
+
+    Write-Host "Selected Country: $($selectedCountry.Name) ($selectedCountryCode)"
+
+    # Extract database and prepare the options for PromptForChoice
+    $Items = [ordered]@{}
+
+    foreach ($DatabaseName in $selectedCountry.Databases.PSObject.Properties.Name) {
+        $label = "$DatabaseName"
+        $helpMessage = ""
+        $Items.Add($label, $helpMessage)
+    }
+
+    # Present the database to the user and ask for a selection
+    $title = "Database Selection"
+    #$selectedOption = $Host.UI.PromptForChoice($title, $message, $options, 0)
+    if ($selectedCountry.StartIndex) {
+        $selectionResult = DisplayMenuAndReadSelection -Items $Items -Title $title -StartIndex $selectedCountry.StartIndex
+    }
+    else {
+        $selectionResult = DisplayMenuAndReadSelection -Items $Items -Title $title
+    }
+
+    # Convert the selection to the country code
+    $selectedDatabase = @($selectedCountry.Databases.PSObject.Properties.Name)[$selectionResult.Index]
+    $selectedBaseURL = $selectedCountry.Databases.$selectedDatabase.BaseURL
+    $selectedCompany = $selectedCountry.Databases.$selectedDatabase.Company
+
+    Write-Host "Selected Database: $($selectedDatabase) ($selectedBaseURL)"
+
+    $keyPath = "$ScriptPath\l02fKiUY\l02fKiUY.txt"
+
+    $key = @(((Get-Content $keyPath) -split ","))
+
+    $credFile = "$installPath\$($jsonContent.BasicAuthLogin).TXT"
+
+    $credential = Get-StoredCredential -credFile $credFile -key $key
+
+    # Authentication:
+    $Authentication = @{
+        #"Company"                     = 'NAS Company' # Note: Must exist or be left empty if a Default Company is setup in the Service Tier. Only used for authentication as printers and jobs are PerCompany=false
+        "Company"                     = $selectedCompany
+
+        "BasicAuthLogin"              = $jsonContent.BasicAuthLogin;
+        "BasicAuthPassword"           = $(([Net.NetworkCredential]::new('', $credential.Password).Password))
+
+        "OAuth2CustomerAADIDOrDomain" = $jsonContent.OAuth2CustomerAADIDOrDomain
+        "OAuth2ClientID"              = $jsonContent.OAuth2ClientID
+        "OAuth2ClientSecret"          = $jsonContent.OAuth2ClientSecret
+    }
+
+    $GetCompaniesWS = "GRIPSDirectPrintGeneralWS_GetCompanies"
+
+    Clear-Host  # Clears the console
+
+    # Ask user for the UserName that will be used to filter the companies
+    do {
+        Clear-Host  # Clears the console
+
+        $UserName = Read-Host "Please enter your UserName (to filter the list of companies)"
+        $isValid = -not [string]::IsNullOrEmpty($UserName)
+        if (-not $isValid) {
+            Write-Host "Invalid entry. Please try again." -ForegroundColor Red
+            Start-Sleep -Seconds 2  # Give user time to read the message before clearing
+        }
+    } while (-not $isValid)
+
+    # Fetch the list of companies
+    $Body = "{""userName"": $($UserName | ConvertTo-Json) }"
+
+    $Companies = (Invoke-BCWebService -Method Post -BaseURL $selectedBaseURL -WebServiceName $GetCompaniesWS -Authentication $Authentication -Body $Body).value
+    $CompaniesObject = $Companies | ConvertFrom-Json
+
+    # Present the list of companies to the user and ask for a selection
+    $title = "Company Selection"
+
+    $Items = [ordered]@{}
+    foreach ($Company in $CompaniesObject.companies) {
+        $Items.Add($Company.Companyname, $Company.DisplayName)
+    }
+
+    $selectionResult = DisplayMenuAndReadSelection -Items $Items -Title $title
+    $selectedCompany = $selectionResult.Key
+    Write-Host "Selected Company: $($selectedCompany)"
+
+    # Set Authentication using selected company
+    $Authentication = @{
+        #"Company"                     = 'NAS Company' # Note: Must exist or be left empty if a Default Company is setup in the Service Tier. Only used for authentication as printers and jobs are PerCompany=false
+        "Company"                     = $selectedCompany
+
+        "BasicAuthLogin"              = $jsonContent.BasicAuthLogin;
+        "BasicAuthPassword"           = $(([Net.NetworkCredential]::new('', $credential.Password).Password))
+
+        "OAuth2CustomerAADIDOrDomain" = $jsonContent.OAuth2CustomerAADIDOrDomain
+        "OAuth2ClientID"              = $jsonContent.OAuth2ClientID
+        "OAuth2ClientSecret"          = $jsonContent.OAuth2ClientSecret
+    }
+
+    $GetRespCentersWS = "GRIPSDirectPrintGeneralWS_GetResponsibilityCenters"
+
+
+    # Fetch the list of responsibility centers
+    $RespCenters = (Invoke-BCWebService -Method Post -BaseURL $selectedBaseURL -WebServiceName $GetRespCentersWS -Authentication $Authentication).value
+    $RespCentersObject = $RespCenters | ConvertFrom-Json
+
+    # Present the list of resonsibility centers to the user and ask for a selection
+    $Items = [ordered]@{}
+    $title = "Responsibility Center Selection"
+    foreach ($RespCtr in $RespCentersObject.responsibilityCenters) {
+        $Items.Add($RespCtr.RespCenterCode, $RespCtr.RespCenterName)
+    }
+
+    $selectionResult = DisplayMenuAndReadSelection -Items $Items -Title $title
+    $selectedRespCtr = $selectionResult.Key
+    Write-Host "Selected Responsibility Center: $($selectedRespCtr)"
+    # Write Company and BaseURL to userconfig.json
+    $userConfigPath = "$installPath\userconfig.json"
+    $userConfig = @{
+        Company = $selectedCompany
+        BaseURL = $selectedBaseURL 
+        RespCtr = $selectedRespCtr
+    } | ConvertTo-Json -Depth 4
+
+    $userConfig | Out-File -FilePath $userConfigPath -Encoding UTF8
+
+    # Define the path to the NSSM executable
+    $nssmPath = "$installPath\Installer\nssm-2.24\win64\nssm.exe"
+
+    # Install the client service using NSSM
+    $installArgs = "-ExecutionPolicy Bypass -File ""$installPath\Run-GRIPSDirectPrintProcessor.ps1"""
+    & $nssmPath install "GRIPSDirectPrint Client Service" "C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe" "$installArgs"
+
+    # Start the service installed by NSSM
+    Start-Service -Name "GRIPSDirectPrint Client Service"
+}    
+
 $user = [Security.Principal.WindowsIdentity]::GetCurrent()
 $isAdmin = (New-Object Security.Principal.WindowsPrincipal $user).IsInRole([Security.Principal.WindowsBuiltinRole]::Administrator)
 #$isAdmin = $true
@@ -232,7 +387,8 @@ if (-Not $isAdmin) {
     $arguments = "& '" + $myinvocation.mycommand.definition + "'"
     Start-Process powershell -Verb runAs -ArgumentList $arguments
     exit
-} else {
+}
+else {
     $IsAdminMsg = "Script is running with administrative privileges - Installing GRIPSDirectPrint Client..."
     Write-Output $IsAdminMsg
 }
@@ -301,164 +457,49 @@ Start-Transcript -Path "$ScriptPath\install.log" -Append
 
 $installConfigPath = "$ScriptPath\install.json"
 
-# Load configuration from JSON file
-$jsonContent = Get-Content $installConfigPath -Encoding UTF8 | ConvertFrom-Json
-
-# Extract countries and prepare the options for PromptForChoice
-$Items = [ordered]@{}
-
-foreach ($countryCode in $jsonContent.Countries.PSObject.Properties.Name) {
-    $country = $jsonContent.Countries.$countryCode
-    $Items.Add("$countryCode", "$($country.Name)")
+# Ask user whether to install the GRIPSDirectPrintClient service
+try {
+    $choices = @(
+        (New-Object System.Management.Automation.Host.ChoiceDescription "&Yes", "Install the GRIPSDirectPrintClient service."),
+        (New-Object System.Management.Automation.Host.ChoiceDescription "&No", "Do not install the service.")
+    )
+    $decision = $Host.UI.PromptForChoice("GRIPSDirectPrintClient Service", "Do you want to install the GRIPSDirectPrintClient service?", $choices, 1)
+} catch {
+    # Fallback for non-interactive hosts
+    $answer = Read-Host "Do you want to install the GRIPSDirectPrintClient service? (Y/N)"
+    $decision = if ($answer -match '^(?i)y(?:es)?$') { 0 } else { 1 }
 }
 
-# Present the countries to the user and ask for a selection
-$title = "Country Selection"
-#$selectedOption = $Host.UI.PromptForChoice($title, $message, $options, 0)
-$selectionResult = DisplayMenuAndReadSelection -Items $Items -Title $title
-
-# Convert the selection to the country code
-$selectedCountryCode = $jsonContent.Countries.PSObject.Properties.Name[$selectionResult.Index]
-$selectedCountry = $jsonContent.Countries.$selectedCountryCode
-
-Write-Host "Selected Country: $($selectedCountry.Name) ($selectedCountryCode)"
-
-# Extract database and prepare the options for PromptForChoice
-$Items = [ordered]@{}
-
-foreach ($DatabaseName in $selectedCountry.Databases.PSObject.Properties.Name) {
-    $label = "$DatabaseName"
-    $helpMessage = ""
-    $Items.Add($label, $helpMessage)
-}
-
-# Present the database to the user and ask for a selection
-$title = "Database Selection"
-#$selectedOption = $Host.UI.PromptForChoice($title, $message, $options, 0)
-if ($selectedCountry.StartIndex) {
-    $selectionResult = DisplayMenuAndReadSelection -Items $Items -Title $title -StartIndex $selectedCountry.StartIndex
-}
-else {
-    $selectionResult = DisplayMenuAndReadSelection -Items $Items -Title $title
-}
-
-# Convert the selection to the country code
-$selectedDatabase = @($selectedCountry.Databases.PSObject.Properties.Name)[$selectionResult.Index]
-$selectedBaseURL = $selectedCountry.Databases.$selectedDatabase.BaseURL
-$selectedCompany = $selectedCountry.Databases.$selectedDatabase.Company
-
-Write-Host "Selected Database: $($selectedDatabase) ($selectedBaseURL)"
-
-$keyPath = "$ScriptPath\l02fKiUY\l02fKiUY.txt"
-
-$key = @(((Get-Content $keyPath) -split ","))
-
-$credFile = "$installPath\$($jsonContent.BasicAuthLogin).TXT"
-
-$credential = Get-StoredCredential -credFile $credFile -key $key
-
-# Authentication:
-$Authentication = @{
-    #"Company"                     = 'NAS Company' # Note: Must exist or be left empty if a Default Company is setup in the Service Tier. Only used for authentication as printers and jobs are PerCompany=false
-    "Company"                     = $selectedCompany
-
-    "BasicAuthLogin"              = $jsonContent.BasicAuthLogin;
-    "BasicAuthPassword"           = $(([Net.NetworkCredential]::new('', $credential.Password).Password))
-
-    "OAuth2CustomerAADIDOrDomain" = $jsonContent.OAuth2CustomerAADIDOrDomain
-    "OAuth2ClientID"              = $jsonContent.OAuth2ClientID
-    "OAuth2ClientSecret"          = $jsonContent.OAuth2ClientSecret
-}
-
-$GetCompaniesWS = "GRIPSDirectPrintGeneralWS_GetCompanies"
-
-Clear-Host  # Clears the console
-
-# Ask user for the UserName that will be used to filter the companies
-do {
-    Clear-Host  # Clears the console
-
-    $UserName = Read-Host "Please enter your UserName (to filter the list of companies)"
-    $isValid = -not [string]::IsNullOrEmpty($UserName)
-    if (-not $isValid) {
-        Write-Host "Invalid entry. Please try again." -ForegroundColor Red
-        Start-Sleep -Seconds 2  # Give user time to read the message before clearing
+if ($decision -eq 0) {
+    if (Get-Command -Name Install-GRIPSDirectPrintClientService -ErrorAction SilentlyContinue) {
+        Write-Host "Installing GRIPSDirectPrintClient service..."
+        try {
+            Install-GRIPSDirectPrintClientService
+            Write-Host "GRIPSDirectPrintClient service installation completed."
+        } catch {
+            Write-Error "Failed to install GRIPSDirectPrintClient service: $($_.Exception.Message)"
+        }
+    } else {
+        Write-Warning "Install-GRIPSDirectPrintClientService command not found. Skipping service installation."
     }
-} while (-not $isValid)
-
-# Fetch the list of companies
-$Body = "{""userName"": $($UserName | ConvertTo-Json) }"
-
-$Companies = (Invoke-BCWebService -Method Post -BaseURL $selectedBaseURL -WebServiceName $GetCompaniesWS -Authentication $Authentication -Body $Body).value
-$CompaniesObject = $Companies | ConvertFrom-Json
-
-# Present the list of companies to the user and ask for a selection
-$title = "Company Selection"
-
-$Items = [ordered]@{}
-foreach ($Company in $CompaniesObject.companies) {
-    $Items.Add($Company.Companyname, $Company.DisplayName)
+} else {
+    Write-Host "Skipping GRIPSDirectPrintClient service installation."
 }
 
-$selectionResult = DisplayMenuAndReadSelection -Items $Items -Title $title
-$selectedCompany = $selectionResult.Key
-Write-Host "Selected Company: $($selectedCompany)"
-
-# Set Authentication using selected company
-$Authentication = @{
-    #"Company"                     = 'NAS Company' # Note: Must exist or be left empty if a Default Company is setup in the Service Tier. Only used for authentication as printers and jobs are PerCompany=false
-    "Company"                     = $selectedCompany
-
-    "BasicAuthLogin"              = $jsonContent.BasicAuthLogin;
-    "BasicAuthPassword"           = $(([Net.NetworkCredential]::new('', $credential.Password).Password))
-
-    "OAuth2CustomerAADIDOrDomain" = $jsonContent.OAuth2CustomerAADIDOrDomain
-    "OAuth2ClientID"              = $jsonContent.OAuth2ClientID
-    "OAuth2ClientSecret"          = $jsonContent.OAuth2ClientSecret
-}
-
-$GetRespCentersWS = "GRIPSDirectPrintGeneralWS_GetResponsibilityCenters"
-
-
-# Fetch the list of responsibility centers
-$RespCenters = (Invoke-BCWebService -Method Post -BaseURL $selectedBaseURL -WebServiceName $GetRespCentersWS -Authentication $Authentication).value
-$RespCentersObject = $RespCenters | ConvertFrom-Json
-
-# Present the list of resonsibility centers to the user and ask for a selection
-$Items = [ordered]@{}
-$title = "Responsibility Center Selection"
-foreach ($RespCtr in $RespCentersObject.responsibilityCenters) {
-    $Items.Add($RespCtr.RespCenterCode, $RespCtr.RespCenterName)
-}
-
-$selectionResult = DisplayMenuAndReadSelection -Items $Items -Title $title
-$selectedRespCtr = $selectionResult.Key
-Write-Host "Selected Responsibility Center: $($selectedRespCtr)"
-# Write Company and BaseURL to userconfig.json
-$userConfigPath = "$installPath\userconfig.json"
-$userConfig = @{
-    Company = $selectedCompany
-    BaseURL = $selectedBaseURL 
-    RespCtr = $selectedRespCtr
-} | ConvertTo-Json -Depth 4
-$userConfig | Out-File -FilePath $userConfigPath -Encoding UTF8
-
+# Now using .sig files which are automatically associated with Signotec SignoSign2
 # Create the file association for .signpdf files
-Write-Host "cmd.exe /c ""assoc $($config.Sign_ext)=SignedPDFFile"""
-& cmd.exe /c "assoc $($config.Sign_ext)=SignedPDFFile"
+#Write-Host "cmd.exe /c ""assoc $($config.Sign_ext)=SignedPDFFile"""
+#& cmd.exe /c "assoc $($config.Sign_ext)=SignedPDFFile"
 
-Write-Host "cmd.exe /c ftype SignedPDFFile=""""$($config.Sign_exe)"""" """"$($config.Sign_params)"""""
-& cmd.exe /c ftype SignedPDFFile="""$($Config.Sign_exe)""" ""$config.Sign_params""
+#Write-Host "cmd.exe /c ftype SignedPDFFile=""""$($config.Sign_exe)"""" """"$($config.Sign_params)"""""
+#& cmd.exe /c ftype SignedPDFFile="""$($Config.Sign_exe)""" ""$config.Sign_params""
 
-# Define the path to the NSSM executable
-$nssmPath = "$installPath\Installer\nssm-2.24\win64\nssm.exe"
+# Create the file association and file type for .grdp files
+Write-Host 'cmd.exe /c "assoc .grdp=GRIPS.DirectPrint.Archive"'
+& cmd.exe /c "assoc .grdp=GRIPS.DirectPrint.Archive"
 
-# Install the client service using NSSM
-$installArgs = "-ExecutionPolicy Bypass -File ""$installPath\Run-GRIPSDirectPrintProcessor.ps1"""
-& $nssmPath install "GRIPSDirectPrint Client Service" "C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe" "$installArgs"
-
-# Start the service installed by NSSM
-Start-Service -Name "GRIPSDirectPrint Client Service"
+Write-Host "ftype GRIPS.DirectPrint.Archive=wscript.exe ""$installPath\Print-GRDPFile.vbs"" ""%1"""
+& cmd.exe /c "ftype GRIPS.DirectPrint.Archive=wscript.exe ""$installPath\Print-GRDPFile.vbs"" ""%1"""
 
 # Clean up the extracted temporary directory
 #Remove-Item -Path $TempExtractPath -Recurse -Force

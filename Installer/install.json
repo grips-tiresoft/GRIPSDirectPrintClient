@@ -67,7 +67,7 @@
             "Databases": {
                 "IT24 TEST": {
                     "BaseURL": "https://TEST-GRIPS-IT.dynamicstocloud.com:1113/ST-149905-DEV/ODataV4/",
-                    "Company": "Playground"
+                    "Company": "PlayGround"
                 },
                 "IT": {
                     "BaseURL": "https://grips-it.dynamicstocloud.com:1113/WS_IT_PROD/ODataV4/",

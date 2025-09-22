@@ -1,4 +1,4 @@
-﻿# Version: v1.0.33
+﻿# Version: v1.0.34 #Moved to config.json - can be removed with next update
 
 # TODO: 
 # * DONE: Add RC to GRIPSDirectPrint
@@ -24,11 +24,17 @@
 # * TODO: Localize the strings - see grips.net\WebServerSidePrinter\NAVPrintingApplication\GRIPSWebPrintingApplication-Install.ps1
 
 param (
-    [string]$configFile = "$PSScriptRoot\config.json",
-    [string]$userConfigFile = "$PSScriptRoot\userconfig.json"
+    [string]$configFile = "",
+    [string]$userConfigFile = ""
 )
 
 ### POWERSHELL ON WINDOWS ###
+
+if ($configFile -eq "") { $configFile = "$PSScriptRoot\config.json" }
+$global:configFile = $configFile
+
+if ($userConfigFile -eq "") { $userConfigFile = "$PSScriptRoot\userconfig.json" }
+$global:userConfigFile = $userConfigFile
 
 # Function to get the decrypted credentials from the encrypted file
 function Get-StoredCredential {
@@ -43,40 +49,46 @@ function Get-StoredCredential {
     }
 }
 
-# Load configuration from JSON file
-$config = Get-Content $configFile | ConvertFrom-Json
+function Get-Config {
+    # Load configuration from JSON file
+    $global:config = Get-Content $global:configFile | ConvertFrom-Json
 
-# Check if userconfig.json exists
-if (Test-Path -Path $userConfigFile -PathType Leaf) {
-    # Load user configuration from userconfig.json
-    $userConfig = Get-Content $userConfigFile | ConvertFrom-Json
+    # Check if userconfig.json exists
+    if (Test-Path -Path $global:userconfigFile -PathType Leaf) {
+        # Load user configuration from userconfig.json
+        $global:userConfig = Get-Content $global:userConfigFile | ConvertFrom-Json
 
-    # Update or add keys from user configuration
-    $userConfig.PSObject.Properties | ForEach-Object {
-        $config.$($_.Name) = $_.Value
+        # Update or add keys from user configuration
+        $global:userConfig.PSObject.Properties | ForEach-Object {
+            $global:config | Add-Member -NotePropertyName $_.Name -NotePropertyValue $_.Value -Force
+        }    
     }
+
+    $config
 }
 
-$releaseApiUrl = $config.ReleaseApiUrl;
+Get-Config -configFile $global:configFile -userConfigFile $global:userConfigFile
+
+$releaseApiUrl = $global:config.ReleaseApiUrl;
 
 $keyPath = "$PSScriptRoot\Installer\l02fKiUY\l02fKiUY.txt"
 $key = @(((Get-Content $keyPath) -split ","))
 
-$credFile = "$PSScriptRoot\$($config.BasicAuthLogin).TXT"
+$credFile = "$PSScriptRoot\$($global:config.BasicAuthLogin).TXT"
 
 $credential = Get-StoredCredential -credFile $credFile -key $key
 
 # Authentication:
 $Authentication = @{
     #"Company"                     = 'NAS Company' # Note: Must exist or be left empty if a Default Company is setup in the Service Tier. Only used for authentication as printers and jobs are PerCompany=false
-    "Company"                     = $config.Company
+    "Company"                     = $global:config.Company
 
-    "BasicAuthLogin"              = $config.BasicAuthLogin;
+    "BasicAuthLogin"              = $global:config.BasicAuthLogin;
     "BasicAuthPassword"           = $(([Net.NetworkCredential]::new('', $credential.Password).Password))
 
-    "OAuth2CustomerAADIDOrDomain" = $config.OAuth2CustomerAADIDOrDomain
-    "OAuth2ClientID"              = $config.OAuth2ClientID
-    "OAuth2ClientSecret"          = $config.OAuth2ClientSecret
+    "OAuth2CustomerAADIDOrDomain" = $global:config.OAuth2CustomerAADIDOrDomain
+    "OAuth2ClientID"              = $global:config.OAuth2ClientID
+    "OAuth2ClientSecret"          = $global:config.OAuth2ClientSecret
 }
 #
 
@@ -84,26 +96,26 @@ $Authentication = @{
 
 # URLs for webservices:
 #$BaseURL    = "https://<hostname>/<instance>/ODataV4/"
-$BaseURL = $config.BaseURL
-$RespCtr = $config.RespCtr
+$BaseURL = $global:config.BaseURL
+$RespCtr = $global:config.RespCtr
 
 $PrintersWS = "GRIPSDirectPrintPrinterWS"
 $QueuesWS = "GRIPSDirectPrintQueueWS"
 
 # Misc.:
 #$IgnorePrinters = @("OneNote for Windows 10","Microsoft XPS Document Writer","Microsoft Print to PDF","Fax") # Don't offer these printers to Business Central
-$IgnorePrinters = $config.IgnorePrinters
+$IgnorePrinters = $global:config.IgnorePrinters
 
 #$PDFPrinter_exe  = "$PSScriptRoot\PDFXCview\PDFXCview.exe"
-if (-not [System.IO.Path]::IsPathRooted($config.PDFPrinter_exe)) {
-    $PDFPrinter_exe = "$PSScriptRoot\$($config.PDFPrinter_exe)"
+if (-not [System.IO.Path]::IsPathRooted($global:config.PDFPrinter_exe)) {
+    $PDFPrinter_exe = "$PSScriptRoot\$($global:config.PDFPrinter_exe)"
 }
 else {
-    $PDFPrinter_exe = $config.PDFPrinter_exe
+    $PDFPrinter_exe = $global:config.PDFPrinter_exe
 }
 
-$Sign_exe = $config.Sign_exe
-$Sign_params = $config.Sign_params
+$Sign_exe = $global:config.Sign_exe
+$Sign_params = $global:config.Sign_params
 
 # {0} = PrinterName
 # {1} = FileName
@@ -113,17 +125,17 @@ $Sign_params = $config.Sign_params
 #$PaperSourceArgument = "" #PDFXCview
 
 #$PDFPrinter_params = "-print-to ""{0}"" -print-settings ""{2}{3}"" ""{1}""" # SumatraPDF
-$PDFPrinter_params = $config.PDFPrinter_params
+$PDFPrinter_params = $global:config.PDFPrinter_params
 $PaperSourceArgument = "bin={0}," # SumatraPDF
 
 #$Delay = 2 # Delay between checking for print jobs in seconds
-$Delay = $config.Delay
+$Delay = $global:config.Delay
 
 #$UpdateDelay = 300 # Delay between updating printers in seconds
-$UpdateDelay = $config.UpdateDelay
+$UpdateDelay = $global:config.UpdateDelay
 
 #$ReleaseCheckDelay = 600 # Delay between checking for new releases in seconds
-$ReleaseCheckDelay = $config.ReleaseCheckDelay
+$ReleaseCheckDelay = $global:config.ReleaseCheckDelay
 
 ### End of Configuration ###
 
@@ -144,7 +156,7 @@ function Start-MyTranscript {
 
     # Remove old transcript files
     $transcriptPath = Join-Path -Path $Path -ChildPath "$($Filename)_*.Transcript.txt"
-    $transcripts = Get-ChildItem -Path $transcriptPath | Where-Object { $_.LastWriteTime -lt (Get-Date).AddDays(-$config.TranscriptMaxAgeDays) }
+    $transcripts = Get-ChildItem -Path $transcriptPath | Where-Object { $_.LastWriteTime -lt (Get-Date).AddDays(-$global:config.TranscriptMaxAgeDays) }
     $transcripts | Remove-Item -Force
 
     return [datetime]::Now
@@ -307,7 +319,12 @@ function Update-Check {
             [string]$updateSignalFile
         )
 
-        $LatestRelease = Invoke-RestMethod -Uri $releaseApiUrl -Method Get
+        if ($global:config.UsePreleaseVersion) {
+            $LatestRelease = (Invoke-RestMethod -Uri ($releaseApiUrl -replace '/latest$', '') -Method Get) | Select-Object -First 1
+        }
+        else {
+            $LatestRelease = Invoke-RestMethod -Uri $releaseApiUrl -Method Get
+        }
         $releaseVersion = $LatestRelease.tag_name.TrimStart('v')
         # Compare versions
         if ([version]$releaseVersion -gt [version]$currentVersion) {
@@ -349,34 +366,34 @@ function Update-Release {
     # Read the path of the extracted folder
     $extractedSubFolder = Get-Content -Path $updateSignalFile
 	
-	Write-Output "$(Get-Date -Format "yyyy-MM-dd HH:mm:ss") Updating release from $extractedSubFolder"
+    Write-Output "$(Get-Date -Format "yyyy-MM-dd HH:mm:ss") Updating release from $extractedSubFolder"
 
     # Backup the current script directory
     $backupScriptDirectory = "$ScriptPath.bak"
 	
-	Write-Host "$(Get-Date -Format "yyyy-MM-dd HH:mm:ss") Backup script folder: $backupScriptDirectory"
+    Write-Host "$(Get-Date -Format "yyyy-MM-dd HH:mm:ss") Backup script folder: $backupScriptDirectory"
 	
     if (Test-Path -Path $backupScriptDirectory) {
         Remove-Item -Path $backupScriptDirectory -Recurse -ErrorAction SilentlyContinue
     }
     
-	Write-Output "$(Get-Date -Format "yyyy-MM-dd HH:mm:ss") Backing up current script folder from $ScriptPath to $backupScriptDirectory"
+    Write-Output "$(Get-Date -Format "yyyy-MM-dd HH:mm:ss") Backing up current script folder from $ScriptPath to $backupScriptDirectory"
     # Copy the script directory to the backup directory
     #Copy-Item -Path $ScriptPath -Destination $backupScriptDirectory -Recurse -Force -Exclude '$Recycle.Bin'
-	$robocopyCommand = @"
+    $robocopyCommand = @"
 robocopy "$ScriptPath" "$backupScriptDirectory" /E /XD '`$Recycle.Bin'
 "@
-	Invoke-Expression $robocopyCommand
+    Invoke-Expression $robocopyCommand
 	
     # Copy the extracted files from the sub-folder to the destination directory
     $resolvedPath = Resolve-Path -Path $extractedSubFolder
 	
-	Write-Output "$(Get-Date -Format "yyyy-MM-dd HH:mm:ss") Copying new script folder from $resolvedPath to $ScriptPath"
+    Write-Output "$(Get-Date -Format "yyyy-MM-dd HH:mm:ss") Copying new script folder from $resolvedPath to $ScriptPath"
     Copy-Item -Path "$resolvedPath\*" -Destination $ScriptPath -Recurse -Force
 
     Remove-Item -Path $updateSignalFile -Force
 
-    Get-ScriptVersion -ScriptPath $FullScriptPath
+    Get-ScriptVersion
     Write-Output "$(Get-Date -Format "yyyy-MM-dd HH:mm:ss") Script updated to version $global:currentVersion."
 
     # Exit the script with non-zero exit code to force the service to restart
@@ -384,19 +401,9 @@ robocopy "$ScriptPath" "$backupScriptDirectory" /E /XD '`$Recycle.Bin'
 }
 
 function Get-ScriptVersion {
-    param (
-        [string]$ScriptPath
-    )
+    Get-Config -configFile $global:configFile -userConfigFile $global:userConfigFile
 
-    $scriptContent = Get-Content -Path $ScriptPath
-    # Extract the current version from the script
-    $global:currentVersion = $null
-    foreach ($line in $scriptContent) {
-        if ($line -match "#\s*Version:\s*v?(\d+\.\d+\.\d+)") {
-            $global:currentVersion = $Matches[1]
-            break
-        }
-    }        
+    $global:currentVersion = $global:config.Version.TrimStart('v')
     Write-Output "Script version: $global:currentVersion"
 }
 
@@ -414,10 +421,7 @@ $ErrorActionPreference = 'Continue'
 $LastPrinterUpdate = (Get-Date).AddSeconds(-$UpdateDelay) # Make sure the update is run immediately on startup of the script
 $LastReleaseCheck = (Get-Date).AddSeconds(-$ReleaseCheckDelay) # Make sure the release check is run immediately on startup of the script
 
-# To combine them into the full path to the script file
-$FullScriptPath = Join-Path -Path $ScriptPath -ChildPath $ScriptName
-
-Write-Host "Starting up - current script version: $(Get-ScriptVersion -ScriptPath $FullScriptPath)"
+Write-Host "Starting up - current script version: $(Get-ScriptVersion)"
 
 # Define update signal file
 $updateSignalFile = "$ScriptPath\update_ready.txt"
@@ -434,7 +438,7 @@ while ($true) {
     }
 
     # Rotate the transcript file when needed
-    if ((Get-Date) -gt $LastTranscriptRotation.AddMinutes($config.TranscriptRotationTimeMins)) {
+    if ((Get-Date) -gt $LastTranscriptRotation.AddMinutes($global:config.TranscriptRotationTimeMins)) {
         Stop-Transcript
         $LastTranscriptRotation = Start-MyTranscript
     }
@@ -552,8 +556,8 @@ Exit 1 # Exit with non-zero exit code to force the service to restart
 # SIG # Begin signature block
 # MIIP2AYJKoZIhvcNAQcCoIIPyTCCD8UCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQU7S76PflNqvtZv2MBCrcHGmDX
-# rVSggg0oMIIFUzCCBDugAwIBAgITGAAAFn2/inOgnDqjKgAAAAAWfTANBgkqhkiG
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUCCxOr81x3fdy1aJenns1Q6Qj
+# kASggg0oMIIFUzCCBDugAwIBAgITGAAAFn2/inOgnDqjKgAAAAAWfTANBgkqhkiG
 # 9w0BAQsFADBiMS0wKwYDVQQKEyRUaGUgR29vZHllYXIgVGlyZSBhbmQgUnViYmVy
 # IENvbXBhbnkxMTAvBgNVBAMTKEdvb2R5ZWFyIFByb2R1Y3Rpb24gR2VuZXJhbCBQ
 # dXJwb3NlIENBIDIwHhcNMjQwMjI4MTEzNDI5WhcNMjYwMjI3MTEzNDI5WjCBxDEL
@@ -628,11 +632,11 @@ Exit 1 # Exit with non-zero exit code to force the service to restart
 # UHJvZHVjdGlvbiBHZW5lcmFsIFB1cnBvc2UgQ0EgMgITGAAAFn2/inOgnDqjKgAA
 # AAAWfTAJBgUrDgMCGgUAoHgwGAYKKwYBBAGCNwIBDDEKMAigAoAAoQKAADAZBgkq
 # hkiG9w0BCQMxDAYKKwYBBAGCNwIBBDAcBgorBgEEAYI3AgELMQ4wDAYKKwYBBAGC
-# NwIBFTAjBgkqhkiG9w0BCQQxFgQUQFItdBs2O6vgi6iJzZnVz0+zbcYwDQYJKoZI
-# hvcNAQEBBQAEggEAQjVUzV9j5DgkPIVfs+YQ7GPcCWI+P6ekLGsO0FZ5bczq+Vjd
-# ryUjC3Ue3jUOJt/J6KjdPNqoK9njNL6ZQDZ5Z3uHPaD9/BbY1kVVNntlgSbyRIBO
-# cItR2d/mgUQDS84E0zOevQDwLoGIq7rl+vs/PffrgDdWClfb9CWC1mrPzLBG3nLq
-# Cxeuz8682/WanKUpi5PVC9eLIO2BeZ6Xup/N13ESw0cArVXpazBde/JtQZGNSjVO
-# /z6C2CfuZ2GINXdn8aeBg2jsFXQNLfFSViGRaTcjZLUiioyF9BdykkGFQFASmffY
-# anVKpyqMq+WQsb4ihJ/Bh+XJ8W2wy6QjTPnKcA==
+# NwIBFTAjBgkqhkiG9w0BCQQxFgQUss4w6e36BrmzDnnlDX6xm3tkX10wDQYJKoZI
+# hvcNAQEBBQAEggEA1EocFU2sjzg0iIUV190h8fdfRoxeVJ3HsNSfO/ESyF2QS3+R
+# aCxVpfUvYgi7kbo2sN7hIPB27ImiOHyf9HdhvOlS9cMJgEYSd/9PUwatsBp67hEj
+# ngvuhtoDnfFkkte2KfxtFuH/w5sMD+n/3DXPD0PjIQu79UZRfJfjUJiDUtiMwmi2
+# expSJe+N5a3fUr3MvBZ/5OELri1rnxjlVrFLoe4HTL4phGkx6E/XiNbMNxkrASH4
+# UqJQwZU6r85uFLC7HpAekr87RRIyTAtmunzBvpfURLFgOkF+iP5GVIFJhVZWM5uL
+# aTQ32gPPPtdIEIiKJHolUtIYwsP0HFGbSYrZhA==
 # SIG # End signature block

@@ -21,8 +21,10 @@
     "Sign_params" : "\"{0}\"",
     "Delay": "2",
     "UpdateDelay": "300",
-    "ReleaseCheckDelay": "600",
+    "ReleaseCheckDelay": "3600",
     "ReleaseApiUrl": "https://api.github.com/repos/grips-tiresoft/GRIPSDirectPrintClient/releases/latest",
     "TranscriptMaxAgeDays": "7",
-    "TranscriptRotationTimeMins": "60"
+    "TranscriptRotationTimeMins": "60",
+    "UsePrereleaseVersion": false,
+    "Version": "1.0.34"
 }
