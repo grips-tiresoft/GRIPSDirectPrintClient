@@ -1,5 +1,3 @@
-# Version: v1.0.33
-
 param (
     [Parameter(Mandatory = $true)]
     [string]$InputFile,
@@ -13,7 +11,7 @@ if ($configFile -eq "") { $configFile = "$ScriptPath\config.json" }
 $global:configFile = $configFile
 
 # Function to parse key=value pairs from a text file into a hashtable
-function Parse-OptionsFile {
+function Get-Options {
     param([string]$FilePath)
     $options = @{}
     Get-Content $FilePath | ForEach-Object {
@@ -208,7 +206,7 @@ try {
             }
 
             # Parse options
-            $options = Parse-OptionsFile -FilePath $optionsFile.FullName
+            $options = Get-Options -FilePath $optionsFile.FullName
 
             # Validate required options
             if (-not $options.ContainsKey("PDFFile")) {
