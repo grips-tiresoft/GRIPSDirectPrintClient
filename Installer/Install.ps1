@@ -360,6 +360,7 @@ function Install-GRIPSDirectPrintClientService {
         Company = $selectedCompany
         BaseURL = $selectedBaseURL 
         RespCtr = $selectedRespCtr
+        UsePrereleaseVersion = $false
     } | ConvertTo-Json -Depth 4
 
     $userConfig | Out-File -FilePath $userConfigPath -Encoding UTF8
@@ -484,6 +485,12 @@ if ($decision -eq 0) {
     }
 } else {
     Write-Host "Skipping GRIPSDirectPrintClient service installation."
+    $userConfigPath = "$installPath\userconfig.json"
+    $userConfig = @{
+        UsePrereleaseVersion = $false
+    } | ConvertTo-Json -Depth 4
+
+    $userConfig | Out-File -FilePath $userConfigPath -Encoding UTF8
 }
 
 # Now using .sig files which are automatically associated with Signotec SignoSign2

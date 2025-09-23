@@ -1,7 +1,8 @@
 param (
     [Parameter(Mandatory = $true)]
     [string]$InputFile,
-    [string]$configFile = ""
+    [string]$configFile = "",
+    [string]$userConfigFile = ""
 )
 
 # Get the full path of the directory containing the script
@@ -9,6 +10,9 @@ $ScriptPath = $PSScriptRoot
 
 if ($configFile -eq "") { $configFile = "$ScriptPath\config.json" }
 $global:configFile = $configFile
+
+if ($userConfigFile -eq "") { $userConfigFile = "$PSScriptRoot\userconfig.json" }
+$global:userConfigFile = $userConfigFile
 
 # Function to parse key=value pairs from a text file into a hashtable
 function Get-Options {
@@ -25,12 +29,14 @@ function Get-Options {
 }
 
 function Update-Check {
-    Write-Host "Checking for updates..." -ForegroundColor White
+    Write-Output "Checking for updates..."
     
-    if ($global:config.UsePreleaseVersion) {
+    if ($global:config.UsePrereleaseVersion) {
+        Write-Output "Using prerelease version for update check..."
         $LatestRelease = (Invoke-RestMethod -Uri ($releaseApiUrl -replace '/latest$', '') -Method Get) | Select-Object -First 1
     }
     else {
+        Write-Output "Using stable version for update check..."
         $LatestRelease = Invoke-RestMethod -Uri $releaseApiUrl -Method Get
     }
     $releaseVersion = $LatestRelease.tag_name.TrimStart('v')
@@ -106,9 +112,26 @@ robocopy "$ScriptPath" "$backupScriptDirectory" /E /XD '`$Recycle.Bin'
     Write-Output "$(Get-Date -Format "yyyy-MM-dd HH:mm:ss") Script updated to version $global:currentVersion."
 }
 
-function Get-ScriptVersion {
+function Get-Config {
     # Load configuration from JSON file
     $global:config = Get-Content $global:configFile | ConvertFrom-Json
+
+    # Check if userconfig.json exists
+    if (Test-Path -Path $global:userconfigFile -PathType Leaf) {
+        # Load user configuration from userconfig.json
+        $global:userConfig = Get-Content $global:userConfigFile | ConvertFrom-Json
+
+        # Update or add keys from user configuration
+        $global:userConfig.PSObject.Properties | ForEach-Object {
+            $global:config | Add-Member -NotePropertyName $_.Name -NotePropertyValue $_.Value -Force
+        }    
+    }
+
+    $config
+}
+
+function Get-ScriptVersion {
+    Get-Config -configFile $global:configFile -userConfigFile $global:userConfigFile
 
     $global:currentVersion = $global:config.Version.TrimStart('v')
     Write-Output "Script version: $global:currentVersion"
@@ -162,8 +185,7 @@ function Start-MyTranscript {
     return [datetime]::Now
 }
 
-# Load configuration from JSON file
-$config = Get-Content $global:configFile | ConvertFrom-Json
+Get-Config -configFile $global:configFile -userConfigFile $global:userConfigFile
 
 if (-not [System.IO.Path]::IsPathRooted($config.PDFPrinter_exe)) {
     $PDFPrinter_exe = "$ScriptPath\$($config.PDFPrinter_exe)"
@@ -283,22 +305,24 @@ finally {
     if (Test-Path -Path $updateSignalFile) {
         Update-Release
     }
-
-    # Define a file to store the last update check timestamp
-    $lastUpdateCheckFile = Join-Path -Path $ScriptPath -ChildPath "last_update_check.txt"
-
-    # After printing completes, check if update check is needed
-    $lastCheckTime = Get-LastUpdateCheckTime
-    $now = Get-Date
-    $elapsedSeconds = ($now - $lastCheckTime).TotalSeconds
-
-    if ($elapsedSeconds -ge $ReleaseCheckDelay) {
-        Set-LastUpdateCheckTime
-        Write-Host "Time since last update check: $elapsedSeconds seconds. Checking for updates..."
-        Update-Check
-    }
     else {
-        Write-Host "Last update check was $elapsedSeconds seconds ago. Skipping update check."
+
+        # Define a file to store the last update check timestamp
+        $lastUpdateCheckFile = Join-Path -Path $ScriptPath -ChildPath "last_update_check.txt"
+
+        # After printing completes, check if update check is needed
+        $lastCheckTime = Get-LastUpdateCheckTime
+        $now = Get-Date
+        $elapsedSeconds = ($now - $lastCheckTime).TotalSeconds
+
+        if ($elapsedSeconds -ge $ReleaseCheckDelay) {
+            Set-LastUpdateCheckTime
+            Write-Host "Time since last update check: $elapsedSeconds seconds. Checking for updates..."
+            Update-Check
+        }
+        else {
+            Write-Host "Last update check was $elapsedSeconds seconds ago. Skipping update check."
+        }
     }
     Stop-Transcript
 }
@@ -310,8 +334,8 @@ finally {
 # SIG # Begin signature block
 # MIIP2AYJKoZIhvcNAQcCoIIPyTCCD8UCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUQoRa3Cf4uvShwv4td8d6vImi
-# bsGggg0oMIIFUzCCBDugAwIBAgITGAAAFn2/inOgnDqjKgAAAAAWfTANBgkqhkiG
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUxc/SZAkNYuG10ctQricASjOD
+# FLSggg0oMIIFUzCCBDugAwIBAgITGAAAFn2/inOgnDqjKgAAAAAWfTANBgkqhkiG
 # 9w0BAQsFADBiMS0wKwYDVQQKEyRUaGUgR29vZHllYXIgVGlyZSBhbmQgUnViYmVy
 # IENvbXBhbnkxMTAvBgNVBAMTKEdvb2R5ZWFyIFByb2R1Y3Rpb24gR2VuZXJhbCBQ
 # dXJwb3NlIENBIDIwHhcNMjQwMjI4MTEzNDI5WhcNMjYwMjI3MTEzNDI5WjCBxDEL
@@ -386,11 +410,11 @@ finally {
 # UHJvZHVjdGlvbiBHZW5lcmFsIFB1cnBvc2UgQ0EgMgITGAAAFn2/inOgnDqjKgAA
 # AAAWfTAJBgUrDgMCGgUAoHgwGAYKKwYBBAGCNwIBDDEKMAigAoAAoQKAADAZBgkq
 # hkiG9w0BCQMxDAYKKwYBBAGCNwIBBDAcBgorBgEEAYI3AgELMQ4wDAYKKwYBBAGC
-# NwIBFTAjBgkqhkiG9w0BCQQxFgQUglibfwSiwjykP5VPUsWqK9SQo6gwDQYJKoZI
-# hvcNAQEBBQAEggEASjdDWLriNWKdmqmHIUELUTJzA9qhmGgq9SvZBN95+HIndibl
-# J/2ceSOtZJBncCezp4iLVAfsysaMExZNQFQy6fGW53KTXN7CTwTEAoiOyVI4EQ28
-# fTCIXTl9bSF6MPintATe1rTy1wJGMn/F9VrBsrcD/KckC7T3z2LF9yOsNz9UHrsF
-# iadv3Q4LSZQNo+fXPekkkOHgBp2q4LRzMiawt3GoEjhFVyR0QWGsfhOmEvZVfjs8
-# YWRmiHrpWO6SQ2WWpZZAvQRDB6h8LnhUIVzSHzudKbGsXGEYFao51S39DQDKIWKe
-# v2PF8379glEQJokOBkMwG38nekFLUktYPmLBNg==
+# NwIBFTAjBgkqhkiG9w0BCQQxFgQUIsOqwCZ3FrPu+wo5fIMYXsb1ovkwDQYJKoZI
+# hvcNAQEBBQAEggEAO8D792ejApuCpZckx1wbKXOcz+R2nvu0o7rI7+cBFvpU/E/Y
+# CYfwyCoVQj5atywd7+K6lyf2krSGh8O3/nvMcR2gAjFMFn2L0+0pM0FZ4Es8ZEX+
+# 0K8dY6YUtbrdvTMaghQDSCjUfUUeYfniRbJSZGdj+KuAvx0okEXfyqfWVPPc6UG/
+# 0cTBoH7bDyCaU1lGGgBdPHGULJHHvJ1E4yVkK8AczXERQNeYqZ9KN4Ug/cWovSLr
+# R6HuxQoFxrgCdyDd53KhYj2e2KF4YV0wcUncM31bda37ScQGcIRVupWH+3QfOlzi
+# nDGCLc+WJPwf3jNo8B9Wb8YkyycMxm9xgzMglw==
 # SIG # End signature block
