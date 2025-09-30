@@ -185,6 +185,27 @@ function Start-MyTranscript {
     return [datetime]::Now
 }
 
+# Return a unique filename by appending (1), (2), etc. if the file already exists
+function Get-UniqueFileName {
+    param([string]$FilePath)
+    
+    if (-not (Test-Path $FilePath)) {
+        return $FilePath
+    }
+    
+    $directory = Split-Path $FilePath -Parent
+    $filename = [System.IO.Path]::GetFileNameWithoutExtension($FilePath)
+    $extension = [System.IO.Path]::GetExtension($FilePath)
+    
+    $counter = 1
+    do {
+        $newPath = Join-Path $directory "$filename ($counter)$extension"
+        $counter++
+    } while (Test-Path $newPath)
+    
+    return $newPath
+}
+
 Get-Config -configFile $global:configFile -userConfigFile $global:userConfigFile
 
 if (-not [System.IO.Path]::IsPathRooted($config.PDFPrinter_exe)) {
@@ -195,7 +216,6 @@ else {
 }
 
 $PDFPrinter_params = $config.PDFPrinter_params
-$PaperSourceArgument = "bin={0}," # SumatraPDF
 $releaseApiUrl = $global:config.ReleaseApiUrl;
 #$ReleaseCheckDelay = 600 # Delay between checking for new releases in seconds
 $ReleaseCheckDelay = $global:config.ReleaseCheckDelay
@@ -219,73 +239,67 @@ try {
             Copy-Item $OldInputFile $InputFile
             Expand-Archive -Path $InputFile -DestinationPath $tempFolder -Force
 
-            # Find the options text file (assuming only one .txt file)
-            $optionsFile = Get-ChildItem -Path $tempFolder -Filter *.txt | Select-Object -First 1
-
-            if (-not $optionsFile) {
-                Write-Error "Options text file not found inside the .grdp archive."
+            # Find printersettings.json
+            $settingsFile = Join-Path $tempFolder "printsettings.json"
+            if (-not (Test-Path $settingsFile)) {
+                Write-Error "printersettings.json not found in archive."
                 exit 1
             }
 
-            # Parse options
-            $options = Get-Options -FilePath $optionsFile.FullName
+            $settings = Get-Content $settingsFile | ConvertFrom-Json
 
-            # Validate required options
-            if (-not $options.ContainsKey("PDFFile")) {
-                Write-Error "PDFFile option missing in options file."
-                exit 1
-            }
+            foreach ($entry in $settings) {
+                $filename = $entry.Filename
+                $printer = $entry.Printer
+                $outputBin = $entry.OutputBin
+                $addArgs = $entry.AdditionalArgs
 
-            $pdfFilePath = Join-Path -Path $tempFolder -ChildPath $options["PDFFile"]
-            if (-not (Test-Path $pdfFilePath)) {
-                Write-Error "PDF file specified in options not found: $pdfFilePath"
-                exit 1
-            }
+                $filePath = Join-Path $tempFolder $filename
+                if (-not (Test-Path $filePath)) {
+                    Write-Warning "File $filename not found in archive, skipping."
+                    continue
+                }
 
-            # Build SumatraPDF print arguments
-            $printerName = $options["Printer"]
-            $outputBin = $options["OutputBin"]
-            $AddArgs = $options["AdditionalArgs"]
+                if ($filePath.ToLower().EndsWith(".pdf")) {
+                    # Construct paper source argument if OutputBin is specified
+                    $paperSourceArg = if ([string]::IsNullOrEmpty($outputBin)) { "" } else { "bin={0}," -f $outputBin }
 
-        
-            # Construct paper source argument if OutputBin is specified
-            if ([string]::IsNullOrEmpty($outputBin)) {
-                $PaperSourceArgument = ""
-            }
-            else {
-                $PaperSourceArgument = $PaperSourceArgument -f $outputBin
-            }
-
-            if (-not [string]::IsNullOrEmpty($AddArgs)) {
-                if ($AddArgs.Contains("-print-settings") -and $Params.Contains("-print-settings")) {
-                    $addPrintArgs = $AddArgs -split '\s+'
-
-                    if ($addPrintArgs.Length -gt 1) {
-                        $AddArgs = $addPrintArgs[1].Trim('"')
+                    # Handle AdditionalArgs for -print-settings
+                    if (-not [string]::IsNullOrEmpty($addArgs)) {
+                        if ($addArgs.Contains("-print-settings") -and $PDFPrinter_params.Contains("-print-settings")) {
+                            $addPrintArgs = $addArgs -split '\s+'
+                            if ($addPrintArgs.Length -gt 1) {
+                                $addArgs = $addPrintArgs[1].Trim('"')
+                            }
+                        }
                     }
-                } 
-            }
 
-            $Params = $PDFPrinter_params -f $printerName, $pdfFilePath, $PaperSourceArgument, $AddArgs
+                    $params = $PDFPrinter_params -f $printer, $filePath, $paperSourceArg, $addArgs
 
-            # Start printing
-            Write-Host "Printing $pdfFilePath to printer '$printerName' with settings '$Params'"
-            $proc = Start-Process -FilePath $PDFPrinter_exe -ArgumentList $Params -PassThru
+                    # Start printing
+                    Write-Host "Printing $filePath to printer '$printer' with settings '$params'"
+                    $proc = Start-Process -FilePath $PDFPrinter_exe -ArgumentList $params -PassThru
 
-            # Wait for process exit with timeout (e.g., 30 seconds)
-            if (-not $proc.WaitForExit(30000)) {
-                Write-Warning "Print process did not exit within 30 seconds, killing process."
-                try {
-                    $proc.Kill()
+                    # Wait for process exit with timeout (e.g., 30 seconds)
+                    if (-not $proc.WaitForExit(30000)) {
+                        Write-Warning "Print process did not exit within 30 seconds, killing process."
+                        try { $proc.Kill() } catch { Write-Warning "Failed to kill print process: $_" }
+                    }
+                    else {
+                        Write-Host "Print job completed for $filePath"
+                    }
+                    continue
                 }
-                catch {
-                    Write-Warning "Failed to kill print process: $_"
+                else {
+                    # Open file with associated executable
+                    $downloadsFolder = [Environment]::GetFolderPath('UserProfile') + "\Downloads"
+                    $uniqueFilePath = Get-UniqueFileName -FilePath (Join-Path -Path $downloadsFolder -ChildPath ([System.IO.Path]::GetFileName($filePath)))
+                    Copy-Item -Path $filePath -Destination $uniqueFilePath
+                    Write-Host "Opening signature file: $uniqueFilePath"
+                    Start-Process -FilePath $uniqueFilePath
+                    continue
                 }
-            }
-            else {
-                Write-Host "Print job completed"
             }        
-
         }
         finally {
             # Clean up temp folder
@@ -334,8 +348,8 @@ finally {
 # SIG # Begin signature block
 # MIIP2AYJKoZIhvcNAQcCoIIPyTCCD8UCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUxc/SZAkNYuG10ctQricASjOD
-# FLSggg0oMIIFUzCCBDugAwIBAgITGAAAFn2/inOgnDqjKgAAAAAWfTANBgkqhkiG
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUR48eDKPpMnpq4NXAIS9HkHs6
+# mG6ggg0oMIIFUzCCBDugAwIBAgITGAAAFn2/inOgnDqjKgAAAAAWfTANBgkqhkiG
 # 9w0BAQsFADBiMS0wKwYDVQQKEyRUaGUgR29vZHllYXIgVGlyZSBhbmQgUnViYmVy
 # IENvbXBhbnkxMTAvBgNVBAMTKEdvb2R5ZWFyIFByb2R1Y3Rpb24gR2VuZXJhbCBQ
 # dXJwb3NlIENBIDIwHhcNMjQwMjI4MTEzNDI5WhcNMjYwMjI3MTEzNDI5WjCBxDEL
@@ -410,11 +424,11 @@ finally {
 # UHJvZHVjdGlvbiBHZW5lcmFsIFB1cnBvc2UgQ0EgMgITGAAAFn2/inOgnDqjKgAA
 # AAAWfTAJBgUrDgMCGgUAoHgwGAYKKwYBBAGCNwIBDDEKMAigAoAAoQKAADAZBgkq
 # hkiG9w0BCQMxDAYKKwYBBAGCNwIBBDAcBgorBgEEAYI3AgELMQ4wDAYKKwYBBAGC
-# NwIBFTAjBgkqhkiG9w0BCQQxFgQUIsOqwCZ3FrPu+wo5fIMYXsb1ovkwDQYJKoZI
-# hvcNAQEBBQAEggEAO8D792ejApuCpZckx1wbKXOcz+R2nvu0o7rI7+cBFvpU/E/Y
-# CYfwyCoVQj5atywd7+K6lyf2krSGh8O3/nvMcR2gAjFMFn2L0+0pM0FZ4Es8ZEX+
-# 0K8dY6YUtbrdvTMaghQDSCjUfUUeYfniRbJSZGdj+KuAvx0okEXfyqfWVPPc6UG/
-# 0cTBoH7bDyCaU1lGGgBdPHGULJHHvJ1E4yVkK8AczXERQNeYqZ9KN4Ug/cWovSLr
-# R6HuxQoFxrgCdyDd53KhYj2e2KF4YV0wcUncM31bda37ScQGcIRVupWH+3QfOlzi
-# nDGCLc+WJPwf3jNo8B9Wb8YkyycMxm9xgzMglw==
+# NwIBFTAjBgkqhkiG9w0BCQQxFgQUp9gDIDFlZk9EE5XYgR9ezYrwqOIwDQYJKoZI
+# hvcNAQEBBQAEggEAA0Cbt3MhKdn19+t/31zYT/bVVuLTNJ3yHmugxXUsBeMynbQq
+# XOyH85di6os0IGRetoOVhkhKtuAAnYhkrkQkCXg3ePcYtxYd7mY3uRgcSoRtiokB
+# xGXcNp6brEUI7ZxT1NSV3+kqcsGPaWooud1gSbjSiNXGWthVOBbzIOx2xLUvDb4+
+# yZkT0katkexxS5PWGLR0jfb+GNbCytf8+u8aunNCDu+yCE38bIeo3ClNTIMrb+AE
+# zb8va87hjVLNc7ET/yjjfESQCv0A7Ylu9dSCu4npRgF7OZGfOnRW8tMZui4yhZfs
+# VEzl9vWeCT9r7fexY/A5sxDwwoLGW4kKL9gbOw==
 # SIG # End signature block
