@@ -304,7 +304,24 @@ try {
         finally {
             # Clean up temp folder
             Remove-Item -Path $tempFolder -Recurse -Force
-            #Remove-Item -Path $InputFile # tidy up downloaded file
+            
+            # Remove old download files
+            $downloadsFolder = [Environment]::GetFolderPath('UserProfile') + "\Downloads"
+
+            # Remove old .eml files
+            $downloadsPath = Join-Path -Path $downloadsFolder -ChildPath "NewEmail*.eml"
+            $downloads = Get-ChildItem -Path $downloadsPath | Where-Object { $_.LastWriteTime -lt (Get-Date).AddDays(-$global:config.TranscriptMaxAgeDays) }
+            $downloads | Remove-Item -Force
+
+            # Remove old .sig files
+            $downloadsPath = Join-Path -Path $downloadsFolder -ChildPath "*.sig"
+            $downloads = Get-ChildItem -Path $downloadsPath | Where-Object { $_.LastWriteTime -lt (Get-Date).AddDays(-$global:config.TranscriptMaxAgeDays) }
+            $downloads | Remove-Item -Force
+
+            # Remove old .grdp files
+            $downloadsPath = Join-Path -Path $downloadsFolder -ChildPath "*.grdp"
+            $downloads = Get-ChildItem -Path $downloadsPath | Where-Object { $_.LastWriteTime -lt (Get-Date).AddDays(-$global:config.TranscriptMaxAgeDays) }
+            $downloads | Remove-Item -Force
         }
     }
     else {
