@@ -1,2 +1,2 @@
 Set sh = CreateObject("WScript.Shell")
-sh.Run "powershell.exe -NoProfile -ExecutionPolicy Bypass -File ""C:\ProgramData\GRIPSDirectPrintClient\Print-GRDPFile.ps1"" """ & WScript.Arguments(0) & """", 0, False
+sh.Run "powershell.exe -STA -WindowStyle Hidden -NoProfile -ExecutionPolicy Bypass -File ""C:\ProgramData\GRIPSDirectPrintClient\Print-GRDPFile.ps1"" """ & WScript.Arguments(0) & """", 0, False

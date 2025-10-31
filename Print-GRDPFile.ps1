@@ -128,6 +128,9 @@ function Get-Config {
     }
 
     $config
+
+    # Load language strings
+    $global:LanguageStrings = Get-LanguageStrings
 }
 
 function Get-ScriptVersion {
@@ -202,8 +205,158 @@ function Get-UniqueFileName {
         $newPath = Join-Path $directory "$filename ($counter)$extension"
         $counter++
     } while (Test-Path $newPath)
-    
+        
     return $newPath
+}
+
+# Function to check if a printer exists
+function Test-PrinterExists {
+    param([string]$PrinterName)
+    try {
+        $printer = Get-Printer -Name $PrinterName -ErrorAction SilentlyContinue
+        return ($null -ne $printer)
+    }
+    catch {
+        return $false
+    }
+}
+
+# Function to load language strings
+function Get-LanguageStrings {
+    param([string]$LanguageFile = "$ScriptPath\languages.json")
+    
+    if (-not (Test-Path $LanguageFile)) {
+        Write-Warning "Language file not found: $LanguageFile. Using default English strings."
+        return $null
+    }
+    
+    try {
+        $allLanguages = Get-Content $LanguageFile | ConvertFrom-Json
+        
+        # Get OS culture
+        $osCulture = [System.Globalization.CultureInfo]::CurrentUICulture.Name
+        Write-Host "OS Language: $osCulture"
+        
+        # Try exact match first (e.g., en-US)
+        if ($allLanguages.PSObject.Properties.Name -contains $osCulture) {
+            Write-Host "Using language strings for: $osCulture"
+            return $allLanguages.$osCulture
+        }
+        
+        # Try language-only match (e.g., en from en-US)
+        $languageOnly = $osCulture.Split('-')[0]
+        $matchingLanguage = $allLanguages.PSObject.Properties.Name | Where-Object { $_ -like "$languageOnly-*" } | Select-Object -First 1
+        
+        if ($matchingLanguage) {
+            Write-Host "Using language strings for: $matchingLanguage (matched from $languageOnly)"
+            return $allLanguages.$matchingLanguage
+        }
+        
+        # Fall back to en-US
+        Write-Host "No matching language found. Using en-US as fallback."
+        return $allLanguages.'en-US'
+    }
+    catch {
+        Write-Error "Failed to load language file: $_"
+        return $null
+    }
+}
+
+# Function to show printer selection dialog
+function Select-AlternativePrinter {
+    param(
+        [string]$MissingPrinterName,
+        [PSCustomObject]$LanguageStrings
+    )
+    
+    Add-Type -AssemblyName System.Windows.Forms
+    Add-Type -AssemblyName System.Drawing
+    
+    # Use default English strings if language strings not loaded
+    if ($null -eq $LanguageStrings) {
+        $LanguageStrings = [PSCustomObject]@{
+            PrinterNotFound = "Printer '{0}' not found.`n`nSelect an alternative printer:"
+            NoPrinters = "No printers available on this system."
+            NoPrintersTitle = "No Printers"
+            PrinterNotFoundTitle = "Printer Not Found"
+            OK = "OK"
+            Cancel = "Cancel"
+        }
+    }
+    
+    # Get list of available printers
+    $printers = Get-Printer | Select-Object -ExpandProperty Name
+    
+    if ($printers.Count -eq 0) {
+        [System.Windows.Forms.MessageBox]::Show(
+            $LanguageStrings.NoPrinters,
+            $LanguageStrings.NoPrintersTitle,
+            [System.Windows.Forms.MessageBoxButtons]::OK,
+            [System.Windows.Forms.MessageBoxIcon]::Error
+        )
+        return $null
+    }
+    
+    # Create form for printer selection
+    $form = New-Object System.Windows.Forms.Form
+    $form.Text = $LanguageStrings.PrinterNotFoundTitle
+    $form.Size = New-Object System.Drawing.Size(400, 380)
+    $form.StartPosition = "CenterScreen"
+    $form.FormBorderStyle = [System.Windows.Forms.FormBorderStyle]::FixedDialog
+    $form.MaximizeBox = $false
+    $form.MinimizeBox = $false
+    $form.TopMost = $true
+    
+    # Warning Label
+    $warningLabel = New-Object System.Windows.Forms.Label
+    $warningLabel.Location = New-Object System.Drawing.Point(10, 10)
+    $warningLabel.Size = New-Object System.Drawing.Size(360, 60)
+    $warningLabel.Text = $LanguageStrings.PrinterNotFound -f $MissingPrinterName
+    $warningLabel.Font = New-Object System.Drawing.Font("Segoe UI", 9, [System.Drawing.FontStyle]::Bold)
+    $form.Controls.Add($warningLabel)
+    
+    # ListBox
+    $listBox = New-Object System.Windows.Forms.ListBox
+    $listBox.Location = New-Object System.Drawing.Point(10, 80)
+    $listBox.Size = New-Object System.Drawing.Size(360, 200)
+    $listBox.SelectionMode = [System.Windows.Forms.SelectionMode]::One
+    
+    foreach ($printer in $printers) {
+        [void]$listBox.Items.Add($printer)
+    }
+    
+    if ($listBox.Items.Count -gt 0) {
+        $listBox.SelectedIndex = 0
+    }
+    
+    $form.Controls.Add($listBox)
+    
+    # OK Button
+    $okButton = New-Object System.Windows.Forms.Button
+    $okButton.Location = New-Object System.Drawing.Point(210, 310)
+    $okButton.Size = New-Object System.Drawing.Size(75, 23)
+    $okButton.Text = $LanguageStrings.OK
+    $okButton.DialogResult = [System.Windows.Forms.DialogResult]::OK
+    $form.AcceptButton = $okButton
+    $form.Controls.Add($okButton)
+    
+    # Cancel Button
+    $cancelButton = New-Object System.Windows.Forms.Button
+    $cancelButton.Location = New-Object System.Drawing.Point(295, 310)
+    $cancelButton.Size = New-Object System.Drawing.Size(75, 23)
+    $cancelButton.Text = $LanguageStrings.Cancel
+    $cancelButton.DialogResult = [System.Windows.Forms.DialogResult]::Cancel
+    $form.CancelButton = $cancelButton
+    $form.Controls.Add($cancelButton)
+    
+    # Show dialog
+    $dialogResult = $form.ShowDialog()
+    
+    if ($dialogResult -eq [System.Windows.Forms.DialogResult]::OK -and $listBox.SelectedItem) {
+        return $listBox.SelectedItem
+    }
+    
+    return $null
 }
 
 Get-Config -configFile $global:configFile -userConfigFile $global:userConfigFile
@@ -214,7 +367,6 @@ if (-not [System.IO.Path]::IsPathRooted($config.PDFPrinter_exe)) {
 else {
     $PDFPrinter_exe = $config.PDFPrinter_exe
 }
-
 $PDFPrinter_params = $config.PDFPrinter_params
 $releaseApiUrl = $global:config.ReleaseApiUrl;
 #$ReleaseCheckDelay = 600 # Delay between checking for new releases in seconds
@@ -261,6 +413,20 @@ try {
                 }
 
                 if ($filePath.ToLower().EndsWith(".pdf")) {
+                    # Check if printer exists
+                    if (-not (Test-PrinterExists -PrinterName $printer)) {
+                        Write-Warning "Printer '$printer' not found."
+                        $alternativePrinter = Select-AlternativePrinter -MissingPrinterName $printer -LanguageStrings $global:LanguageStrings
+                        
+                        if ($null -eq $alternativePrinter) {
+                            Write-Warning "No alternative printer selected. Skipping print job for $filePath"
+                            continue
+                        }
+                        
+                        Write-Host "Using alternative printer: $alternativePrinter"
+                        $printer = $alternativePrinter
+                    }
+                    
                     # Construct paper source argument if OutputBin is specified
                     $paperSourceArg = if ([string]::IsNullOrEmpty($outputBin)) { "" } else { "bin={0}," -f $outputBin }
 
@@ -311,17 +477,29 @@ try {
             # Remove old .eml files
             $downloadsPath = Join-Path -Path $downloadsFolder -ChildPath "NewEmail*.eml"
             $downloads = Get-ChildItem -Path $downloadsPath | Where-Object { $_.LastWriteTime -lt (Get-Date).AddDays(-$global:config.TranscriptMaxAgeDays) }
-            $downloads | Remove-Item -Force
+            if ($null -ne $downloads) { 
+                Write-Host "Removing old .eml files:" 
+                Write-Host $downloads
+                $downloads | Remove-Item -Force 
+            }
 
             # Remove old .sig files
             $downloadsPath = Join-Path -Path $downloadsFolder -ChildPath "*.sig"
             $downloads = Get-ChildItem -Path $downloadsPath | Where-Object { $_.LastWriteTime -lt (Get-Date).AddDays(-$global:config.TranscriptMaxAgeDays) }
-            $downloads | Remove-Item -Force
+            if ($null -ne $downloads) {
+                Write-Host "Removing old .sig files:"
+                Write-Host $downloads
+                $downloads | Remove-Item -Force
+            }
 
             # Remove old .grdp files
             $downloadsPath = Join-Path -Path $downloadsFolder -ChildPath "*.grdp"
             $downloads = Get-ChildItem -Path $downloadsPath | Where-Object { $_.LastWriteTime -lt (Get-Date).AddDays(-$global:config.TranscriptMaxAgeDays) }
-            $downloads | Remove-Item -Force
+            if ($null -ne $downloads) {
+                Write-Host "Removing old .grdp files:"
+                Write-Host $downloads
+                $downloads | Remove-Item -Force
+            }
         }
     }
     else {
@@ -365,8 +543,8 @@ finally {
 # SIG # Begin signature block
 # MIIP2AYJKoZIhvcNAQcCoIIPyTCCD8UCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUPwXWdsey/B8mE9LcTu2X8SFR
-# SOuggg0oMIIFUzCCBDugAwIBAgITGAAAFn2/inOgnDqjKgAAAAAWfTANBgkqhkiG
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQU+F4RljxkFx4w/wg2kFxL5TGq
+# 35yggg0oMIIFUzCCBDugAwIBAgITGAAAFn2/inOgnDqjKgAAAAAWfTANBgkqhkiG
 # 9w0BAQsFADBiMS0wKwYDVQQKEyRUaGUgR29vZHllYXIgVGlyZSBhbmQgUnViYmVy
 # IENvbXBhbnkxMTAvBgNVBAMTKEdvb2R5ZWFyIFByb2R1Y3Rpb24gR2VuZXJhbCBQ
 # dXJwb3NlIENBIDIwHhcNMjQwMjI4MTEzNDI5WhcNMjYwMjI3MTEzNDI5WjCBxDEL
@@ -441,11 +619,11 @@ finally {
 # UHJvZHVjdGlvbiBHZW5lcmFsIFB1cnBvc2UgQ0EgMgITGAAAFn2/inOgnDqjKgAA
 # AAAWfTAJBgUrDgMCGgUAoHgwGAYKKwYBBAGCNwIBDDEKMAigAoAAoQKAADAZBgkq
 # hkiG9w0BCQMxDAYKKwYBBAGCNwIBBDAcBgorBgEEAYI3AgELMQ4wDAYKKwYBBAGC
-# NwIBFTAjBgkqhkiG9w0BCQQxFgQUEfAqmiSWMrbK/NxCDA/RrBZnqWcwDQYJKoZI
-# hvcNAQEBBQAEggEAupMAVs3UPvdJ4FqSeBoHLIE3RXNgSXtLyWItWsIJOulj3aXX
-# O64Vp7f3Rqi1OSWcraYCGYKr0vSubdkwPFprv3gnOJFpWl0HREoJsCLt8Wrbz06g
-# 3HbZn2lSwb+FSQuX081IvbdhRvcAedWyQLyoV8vUc82gqcfrMYU9orVWQ/1XDBc2
-# gdPcpT49atpaZIWaCabpQbUPFgs5ii6rF0x2P7PnH6P/P7dhpUa1HMupP16TDBQa
-# GiP6yEIAa5Bcs8Z3SKZWtk2rIod0t8kSZVw3azGc9aucr8n1j75V8lcqEG+t8Hcu
-# jJVYHnutgp2Q1QvYfm9eVvxpYaelDYrXEcLlHg==
+# NwIBFTAjBgkqhkiG9w0BCQQxFgQUQHF4gfMwrSL7jtYLSBySx46VJyEwDQYJKoZI
+# hvcNAQEBBQAEggEAeg1tX69dJI1uH8+Tka/l0VeLGy+7Qg3VWH+PMhqHXIc8tLys
+# X6ZINxN6R08s2eZyEUtBx7gFlhCOZ0RqQiKn2yRHgOxSjAYxfajbUbvZnnXZzWac
+# Ep46ns11JbMv2IEKuJW7v3l9z6fVhrE0Kv85WQeobuQUfnuqxhmF/XHUEzUM1d/U
+# pHZqbZj9u4V331IBCCf2RYbZPDQGP40VvcdiMdGSXeprfq7HHLrqhlyJfd9bPZ5P
+# NaySGgew1eY1I339WHA0RN+cFurn5O6yMvfabaSc4ecFB2OhFMKhA7X9C7aOPvh9
+# pKSDr8QmC4u+xmoE9un8oU6zProQb4bto2GvRg==
 # SIG # End signature block
