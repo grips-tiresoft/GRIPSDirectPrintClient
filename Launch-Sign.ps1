@@ -8,12 +8,12 @@ param (
 Write-Host "Signing file: $File"
 
 # Load configuration from JSON file
-$config = Get-Content $configFile | ConvertFrom-Json
+$config = Get-Content $configFile -Encoding UTF8 | ConvertFrom-Json
 
 # Check if userconfig.json exists
 if (Test-Path -Path $userConfigFile -PathType Leaf) {
     # Load user configuration from userconfig.json
-    $userConfig = Get-Content $userConfigFile | ConvertFrom-Json
+    $userConfig = Get-Content $userConfigFile -Encoding UTF8 | ConvertFrom-Json
 
     # Update or add keys from user configuration
     $userConfig.PSObject.Properties | ForEach-Object {
