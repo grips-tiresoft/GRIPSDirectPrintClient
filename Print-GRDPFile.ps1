@@ -32,11 +32,13 @@ function Update-Check {
     Write-Output "Checking for updates..."
     
     if ($global:config.UsePrereleaseVersion) {
-        Write-Output "Using prerelease version for update check..."
-        $LatestRelease = (Invoke-RestMethod -Uri ($releaseApiUrl -replace '/latest$', '') -Method Get) | Select-Object -First 1
+        Write-Output "Checking for latest release (including prereleases)..."
+        # Get all releases (sorted by date, newest first)
+        $AllReleases = Invoke-RestMethod -Uri ($releaseApiUrl -replace '/latest$', '') -Method Get
+        $LatestRelease = $AllReleases | Select-Object -First 1
     }
     else {
-        Write-Output "Using stable version for update check..."
+        Write-Output "Checking for latest stable release only..."
         $LatestRelease = Invoke-RestMethod -Uri $releaseApiUrl -Method Get
     }
     $releaseVersion = $LatestRelease.tag_name.TrimStart('v')
@@ -78,8 +80,20 @@ function Update-Check {
 
 # Function to perform the update
 function Update-Release {
+    # Ensure the update signal file exists before trying to read it
+    if (-not (Test-Path -Path $updateSignalFile)) {
+        Write-Error "Update signal file not found at: $updateSignalFile"
+        return
+    }
+    
     # Read the path of the extracted folder
     $extractedSubFolder = Get-Content -Path $updateSignalFile
+    
+    if ([string]::IsNullOrWhiteSpace($extractedSubFolder)) {
+        Write-Error "Update signal file is empty: $updateSignalFile"
+        Remove-Item -Path $updateSignalFile -Force
+        return
+    }
 	
     Write-Output "$(Get-Date -Format "yyyy-MM-dd HH:mm:ss") Updating release from $extractedSubFolder"
 
@@ -543,8 +557,8 @@ finally {
 # SIG # Begin signature block
 # MIIP/QYJKoZIhvcNAQcCoIIP7jCCD+oCAQExDzANBglghkgBZQMEAgEFADB5Bgor
 # BgEEAYI3AgEEoGswaTA0BgorBgEEAYI3AgEeMCYCAwEAAAQQH8w7YFlLCE63JNLG
-# KX7zUQIBAAIBAAIBAAIBAAIBADAxMA0GCWCGSAFlAwQCAQUABCB9/+3om0xSvlWF
-# Q5rv4QZ3dmxaC+MlrtFVIQrgXMYhTqCCDSgwggVTMIIEO6ADAgECAhMYAAAWfb+K
+# KX7zUQIBAAIBAAIBAAIBAAIBADAxMA0GCWCGSAFlAwQCAQUABCDypKCbUCZ8AevS
+# q6iZE8cbcbGshICYX4tfdqiHEW1aWKCCDSgwggVTMIIEO6ADAgECAhMYAAAWfb+K
 # c6CcOqMqAAAAABZ9MA0GCSqGSIb3DQEBCwUAMGIxLTArBgNVBAoTJFRoZSBHb29k
 # eWVhciBUaXJlIGFuZCBSdWJiZXIgQ29tcGFueTExMC8GA1UEAxMoR29vZHllYXIg
 # UHJvZHVjdGlvbiBHZW5lcmFsIFB1cnBvc2UgQ0EgMjAeFw0yNDAyMjgxMTM0Mjla
@@ -619,12 +633,12 @@ finally {
 # MTEwLwYDVQQDEyhHb29keWVhciBQcm9kdWN0aW9uIEdlbmVyYWwgUHVycG9zZSBD
 # QSAyAhMYAAAWfb+Kc6CcOqMqAAAAABZ9MA0GCWCGSAFlAwQCAQUAoIGEMBgGCisG
 # AQQBgjcCAQwxCjAIoAKAAKECgAAwGQYJKoZIhvcNAQkDMQwGCisGAQQBgjcCAQQw
-# HAYKKwYBBAGCNwIBCzEOMAwGCisGAQQBgjcCARUwLwYJKoZIhvcNAQkEMSIEIG5W
-# RtF0xeVa+Tm3uc8dryMJiEfFRPfMXEBE19loHMwWMA0GCSqGSIb3DQEBAQUABIIB
-# AHUMBaZyuMQ7XoqWwmcmQpxNG9sp41hroZIV9S/SLVnzqX+HqC/kAl2d8pYiv8jP
-# 8sx9pFDaATqPU2Vr6yE2di+Ev64/PK/h+oaBlwmBRpefvNp9JZIhg/0g2umiPymD
-# bMsRu9l4f0jU4RhAFQUSivDziwT3v+JHdVYi8gZhK++WyxFsk9wOz43O/kU2P43B
-# RKg1wnkJjuidIC9N18sHhFOJTV81/+HM7J2+pw3EIrTX3qNHw1WyLqg7FlWYkHTt
-# q2AC32MsFKOv89yx0+GREG7LQfZ/dqVHDXwF4mZsegXBP3s4xHoxQTiFoHpccS2N
-# VHi0MTQf2jQMHzgItzon3+M=
+# HAYKKwYBBAGCNwIBCzEOMAwGCisGAQQBgjcCARUwLwYJKoZIhvcNAQkEMSIEIE0V
+# m+jIJqoqVpoZqiYi99GpQuuzLa3Yvx9pfNYjOrR+MA0GCSqGSIb3DQEBAQUABIIB
+# AH6KwHEWs1QhhWRdAtt05XiBh+yQyzuDOMKhXZvSK+X8jZaIWlIgKT06Y4HBPWwJ
+# T/qRPxdtAcwLm3e2J8CRVpR+0Ae7yccalW3451M9SGNx2+8/O0XIrGAsmdcpNGNW
+# syjycNQ+DECO1+/z3asN+WOHJKCX5YgZITyvJmhzg+wCTU62R0CiK/bVDcdC1777
+# j3qMluEzwpQI7/k4gC5phibin2Af4UAfckNjHZXUegyxl3KgoCAqyoetC6f9cAHV
+# R7n/vr9XAkWBKJ4V6RP91enIEQq1k7kpc2NJttC43wcXkq9BIa46D0TSlqZ4QMN8
+# Klikv7SobEkVTn09cvkWRwo=
 # SIG # End signature block

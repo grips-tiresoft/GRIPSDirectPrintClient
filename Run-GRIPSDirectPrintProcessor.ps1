@@ -312,17 +312,22 @@ function Update-Check {
     Write-Host "Checking for updates..." -ForegroundColor White
     
     # Start background job to check for updates
-    Start-Job -Arg $releaseApiUrl, $currentVersion, $updateSignalFile -ScriptBlock {
+    Start-Job -Arg $releaseApiUrl, $currentVersion, $updateSignalFile, $global:config.UsePrereleaseVersion -ScriptBlock {
         param (
             [string]$releaseApiUrl,
             [string]$currentVersion,
-            [string]$updateSignalFile
+            [string]$updateSignalFile,
+            [bool]$usePrereleaseVersion
         )
 
-        if ($global:config.UsePreleaseVersion) {
-            $LatestRelease = (Invoke-RestMethod -Uri ($releaseApiUrl -replace '/latest$', '') -Method Get) | Select-Object -First 1
+        if ($usePrereleaseVersion) {
+            Write-Output "Checking for latest release (including prereleases)..."
+            # Get all releases (sorted by date, newest first)
+            $AllReleases = Invoke-RestMethod -Uri ($releaseApiUrl -replace '/latest$', '') -Method Get
+            $LatestRelease = $AllReleases | Select-Object -First 1
         }
         else {
+            Write-Output "Checking for latest stable release only..."
             $LatestRelease = Invoke-RestMethod -Uri $releaseApiUrl -Method Get
         }
         $releaseVersion = $LatestRelease.tag_name.TrimStart('v')
@@ -363,8 +368,20 @@ function Update-Check {
 
 # Function to perform the update
 function Update-Release {
+    # Ensure the update signal file exists before trying to read it
+    if (-not (Test-Path -Path $updateSignalFile)) {
+        Write-Error "Update signal file not found at: $updateSignalFile"
+        return
+    }
+    
     # Read the path of the extracted folder
     $extractedSubFolder = Get-Content -Path $updateSignalFile
+    
+    if ([string]::IsNullOrWhiteSpace($extractedSubFolder)) {
+        Write-Error "Update signal file is empty: $updateSignalFile"
+        Remove-Item -Path $updateSignalFile -Force
+        return
+    }
 	
     Write-Output "$(Get-Date -Format "yyyy-MM-dd HH:mm:ss") Updating release from $extractedSubFolder"
 
@@ -427,14 +444,16 @@ Write-Host "Starting up - current script version: $(Get-ScriptVersion)"
 $updateSignalFile = "$ScriptPath\update_ready.txt"
 
 while ($true) {
-    # Check for new releases
-    if (($(Get-Date) - $LastReleaseCheck).TotalSeconds -gt $ReleaseCheckDelay) {
-        Update-Check
-        $LastReleaseCheck = Get-Date
-    }
-
+    # Check if an update is ready to be applied
     if (Test-Path -Path $updateSignalFile) {
         Update-Release
+    }
+    else {
+        # Only check for new releases if no update is pending
+        if (($(Get-Date) - $LastReleaseCheck).TotalSeconds -gt $ReleaseCheckDelay) {
+            Update-Check
+            $LastReleaseCheck = Get-Date
+        }
     }
 
     # Rotate the transcript file when needed
@@ -556,8 +575,8 @@ Exit 1 # Exit with non-zero exit code to force the service to restart
 # SIG # Begin signature block
 # MIIP/QYJKoZIhvcNAQcCoIIP7jCCD+oCAQExDzANBglghkgBZQMEAgEFADB5Bgor
 # BgEEAYI3AgEEoGswaTA0BgorBgEEAYI3AgEeMCYCAwEAAAQQH8w7YFlLCE63JNLG
-# KX7zUQIBAAIBAAIBAAIBAAIBADAxMA0GCWCGSAFlAwQCAQUABCDmqD0VM3MbGH6z
-# Bb0M7sgWdgWueqAdmzsBGE2qDQC+naCCDSgwggVTMIIEO6ADAgECAhMYAAAWfb+K
+# KX7zUQIBAAIBAAIBAAIBAAIBADAxMA0GCWCGSAFlAwQCAQUABCDPYUf3YIz99Duy
+# cinecRCYZuovBoOIvzLHu8rSJLixgaCCDSgwggVTMIIEO6ADAgECAhMYAAAWfb+K
 # c6CcOqMqAAAAABZ9MA0GCSqGSIb3DQEBCwUAMGIxLTArBgNVBAoTJFRoZSBHb29k
 # eWVhciBUaXJlIGFuZCBSdWJiZXIgQ29tcGFueTExMC8GA1UEAxMoR29vZHllYXIg
 # UHJvZHVjdGlvbiBHZW5lcmFsIFB1cnBvc2UgQ0EgMjAeFw0yNDAyMjgxMTM0Mjla
@@ -632,12 +651,12 @@ Exit 1 # Exit with non-zero exit code to force the service to restart
 # MTEwLwYDVQQDEyhHb29keWVhciBQcm9kdWN0aW9uIEdlbmVyYWwgUHVycG9zZSBD
 # QSAyAhMYAAAWfb+Kc6CcOqMqAAAAABZ9MA0GCWCGSAFlAwQCAQUAoIGEMBgGCisG
 # AQQBgjcCAQwxCjAIoAKAAKECgAAwGQYJKoZIhvcNAQkDMQwGCisGAQQBgjcCAQQw
-# HAYKKwYBBAGCNwIBCzEOMAwGCisGAQQBgjcCARUwLwYJKoZIhvcNAQkEMSIEIJvI
-# zHZF0RSkeMO2N9uf6TCygwgpbZviFoZnnep4Ql01MA0GCSqGSIb3DQEBAQUABIIB
-# AAHAqJbaLCrXiQL5adA9Q4LWoOGNv1OQ3xgqqfB6xZ5HkRBg6HrG5NpHVkui0Zr4
-# 3un3r9p4FkdbhRI5U2AO4WHdMc2RFWb5cEJzlMibxP+vzkfY7fYDjKqR9xr5cScU
-# 04pumW2Rx5tgYZLvdVekEZ0HcMvD2PzwdjQY/of1WYtEMbybxkkgHG8YeSxur+ks
-# OFUkQ442DQitMvKXYJ1RbCGNIWDuJu8DonazJ4xMhtn2U1Z2+7cL78X0rAhfrOkz
-# kGxjNsBSTMcrD9WKBGwYe/LVrmLUW491o+UvznJv0SE0SaqINxDeoiOehMdv/Srn
-# FYDVMWG78jBvT7TvWr0xMvo=
+# HAYKKwYBBAGCNwIBCzEOMAwGCisGAQQBgjcCARUwLwYJKoZIhvcNAQkEMSIEIG1y
+# X1SBt5fCmUooAJLsZ6X1hbzwIgQxdqZMO6YLxaPJMA0GCSqGSIb3DQEBAQUABIIB
+# AAX1zbLeJ+jpw58mUYK5acmfAAXvnPKJLSsaL7yOYyrfcSUKiHpsgQEYCuUDDa9t
+# I81CxQROtBqrxIEeKZor3Z99R6kRipOSZZpFInZz/oJTKsW9U0RL8ZRXhfMIYVfW
+# YKS7vgQpXpc2c5SgIAf6m9dimRDBGhoghMLuWOrUFebKfiHwrsrVhsJaYnVMiBPr
+# RmSGJ5Ene1BE9HYfT5MF8bkzJJcTYJzp2r+/fa//IXOPsHrMUvwAJ5f0Z/E+Vjxj
+# KsJjsHaLmh6oa6GhLIii9wIhSuF+NoSEov34lu1ysYzCAsWkeg06GtVspDrvP0+r
+# caBGfwvDb6gM5KtwSG6u59I=
 # SIG # End signature block
