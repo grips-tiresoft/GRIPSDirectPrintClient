@@ -1,0 +1,44 @@
+#!/bin/zsh
+
+# GRIPSDirectPrint launcher script
+# This script is called when a .grdp file is opened
+
+# Get the directory where this script resides (inside the .app bundle)
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+# The Resources directory contains all the actual scripts and files
+RESOURCES_DIR="$SCRIPT_DIR/../Resources"
+
+# Get the path to the main print script
+PRINT_SCRIPT="$RESOURCES_DIR/Print-GRDPFile.sh"
+
+# Handle file argument - check command line first
+if [[ $# -gt 0 ]]; then
+    INPUT_FILE="$1"
+else
+    # When opened via Finder/open command, the file might be in a temp location
+    # Check for recently opened files in common locations
+    TEMP_INPUT=""
+    
+    # Wait a moment for macOS to finish opening
+    sleep 0.5
+    
+    # Check if there's a file being passed via stdin or environment
+    # For now, show error if no file provided via command line
+    osascript -e 'display dialog "No file provided to GRIPS Direct Print.\n\nPlease open a .grdp file by:\n1. Right-clicking the file → Open With\n2. Making this the default app for .grdp files" buttons {"OK"} default button "OK" with icon stop with title "GRIPS Direct Print"'
+    exit 1
+fi
+
+# Check if the print script exists
+if [[ ! -f "$PRINT_SCRIPT" ]]; then
+    osascript -e "display dialog \"Error: Print script not found at:\\n$PRINT_SCRIPT\" buttons {\"OK\"} default button \"OK\" with icon stop with title \"GRIPS Direct Print\""
+    exit 1
+fi
+
+# Make sure the script is executable
+chmod +x "$PRINT_SCRIPT"
+
+# Call the main print script with the input file
+"$PRINT_SCRIPT" -i "$INPUT_FILE"
+
+exit $?
