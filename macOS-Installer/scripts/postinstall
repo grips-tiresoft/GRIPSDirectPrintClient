@@ -1,0 +1,31 @@
+#!/bin/zsh
+
+# Postinstall script for GRIPS Direct Print
+# This script runs after the application is installed
+
+set -e
+
+APP_PATH="/Applications/GRIPSDirectPrint.app"
+SCRIPT_PATH="$APP_PATH/Contents/Resources/Print-GRDPFile.sh"
+
+# Make sure the main script is executable
+if [[ -f "$SCRIPT_PATH" ]]; then
+    chmod +x "$SCRIPT_PATH"
+fi
+
+# Make sure the launcher is executable
+if [[ -f "$APP_PATH/Contents/MacOS/GRIPSDirectPrint" ]]; then
+    chmod +x "$APP_PATH/Contents/MacOS/GRIPSDirectPrint"
+fi
+
+# Register the application with Launch Services to handle .grdp files
+# This forces macOS to recognize the file type handler
+/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "$APP_PATH"
+
+# Set the app as the default handler for .grdp files for all users
+# Note: This requires admin privileges and may prompt the user
+
+echo "GRIPS Direct Print has been installed successfully."
+echo "The application will now handle .grdp files by default."
+
+exit 0

@@ -1,0 +1,26 @@
+GRIPS Direct Print - Installation Instructions for macOS
+=========================================================
+
+For users installing an unsigned package downloaded from the internet:
+
+1. Open Terminal (Applications > Utilities > Terminal)
+
+2. Navigate to the folder containing the .pkg file:
+   cd ~/Downloads
+
+3. Remove the quarantine attribute:
+   xattr -d com.apple.quarantine GRIPSDirectPrint-Installer.pkg
+
+4. Install the package:
+   sudo installer -pkg GRIPSDirectPrint-Installer.pkg -target /
+
+5. Enter your password when prompted
+
+After installation:
+- The app will be installed to /Applications/GRIPSDirectPrint.app
+- Double-click any .grdp file to process it automatically
+- PDFs will be printed, other files will open in their default applications
+
+Troubleshooting:
+- Debug logs are written to ~/Library/Logs/GRIPSDirectPrint.log
+- To view logs: cat ~/Library/Logs/GRIPSDirectPrint.log

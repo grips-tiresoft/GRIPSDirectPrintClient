@@ -1,0 +1,14 @@
+[
+    {
+        "Printer": "Brother_MFC-L3740CDW_series",
+        "OutputBin": "258",
+        "AdditionalArgs": "",
+        "Filename": "GRIPSDE Sales Invoice.pdf"
+    },
+    {
+        "Printer": "",
+        "OutputBin": "0",
+        "AdditionalArgs": "",
+        "Filename": "NewEmail.eml"
+    }
+]

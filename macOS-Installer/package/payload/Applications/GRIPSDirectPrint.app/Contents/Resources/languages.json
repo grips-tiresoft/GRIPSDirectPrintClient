@@ -1,0 +1,98 @@
+{
+    "en-US": {
+        "PrinterNotFound": "Printer '{0}' not found.\n\nSelect an alternative printer:",
+        "NoPrinters": "No printers available on this system.",
+        "NoPrintersTitle": "GRIPS - No Printers",
+        "PrinterNotFoundTitle": "GRIPS - Printer Not Found",
+        "OK": "OK",
+        "Cancel": "Cancel"
+    },
+    "en-GB": {
+        "PrinterNotFound": "Printer '{0}' not found.\n\nSelect an alternative printer:",
+        "NoPrinters": "No printers available on this system.",
+        "NoPrintersTitle": "GRIPS - No Printers",
+        "PrinterNotFoundTitle": "GRIPS - Printer Not Found",
+        "OK": "OK",
+        "Cancel": "Cancel"
+    },
+    "de-DE": {
+        "PrinterNotFound": "Drucker '{0}' nicht gefunden.\n\nWählen Sie einen alternativen Drucker:",
+        "NoPrinters": "Keine Drucker auf diesem System verfügbar.",
+        "NoPrintersTitle": "GRIPS - Keine Drucker",
+        "PrinterNotFoundTitle": "GRIPS - Drucker nicht gefunden",
+        "OK": "OK",
+        "Abbrechen": "Abbrechen"
+    },
+    "fr-FR": {
+        "PrinterNotFound": "Imprimante '{0}' introuvable.\n\nSélectionnez une imprimante alternative:",
+        "NoPrinters": "Aucune imprimante disponible sur ce système.",
+        "NoPrintersTitle": "GRIPS - Aucune imprimante",
+        "PrinterNotFoundTitle": "GRIPS - Imprimante introuvable",
+        "OK": "OK",
+        "Cancel": "Annuler"
+    },
+    "es-ES": {
+        "PrinterNotFound": "Impresora '{0}' no encontrada.\n\nSeleccione una impresora alternativa:",
+        "NoPrinters": "No hay impresoras disponibles en este sistema.",
+        "NoPrintersTitle": "GRIPS - Sin impresoras",
+        "PrinterNotFoundTitle": "GRIPS - Impresora no encontrada",
+        "OK": "OK",
+        "Cancel": "Cancelar"
+    },
+    "it-IT": {
+        "PrinterNotFound": "Stampante '{0}' non trovata.\n\nSeleziona una stampante alternativa:",
+        "NoPrinters": "Nessuna stampante disponibile su questo sistema.",
+        "NoPrintersTitle": "GRIPS - Nessuna stampante",
+        "PrinterNotFoundTitle": "GRIPS - Stampante non trovata",
+        "OK": "OK",
+        "Cancel": "Annulla"
+    },
+    "nl-NL": {
+        "PrinterNotFound": "Printer '{0}' niet gevonden.\n\nSelecteer een alternatieve printer:",
+        "NoPrinters": "Geen printers beschikbaar op dit systeem.",
+        "NoPrintersTitle": "GRIPS - Geen printers",
+        "PrinterNotFoundTitle": "GRIPS - Printer niet gevonden",
+        "OK": "OK",
+        "Cancel": "Annuleren"
+    },
+    "pt-PT": {
+        "PrinterNotFound": "Impressora '{0}' não encontrada.\n\nSelecione uma impressora alternativa:",
+        "NoPrinters": "Nenhuma impressora disponível neste sistema.",
+        "NoPrintersTitle": "GRIPS - Sem impressoras",
+        "PrinterNotFoundTitle": "GRIPS - Impressora não encontrada",
+        "OK": "OK",
+        "Cancel": "Cancelar"
+    },
+    "pl-PL": {
+        "PrinterNotFound": "Drukarka '{0}' nie została znaleziona.\n\nWybierz alternatywną drukarkę:",
+        "NoPrinters": "Brak dostępnych drukarek w tym systemie.",
+        "NoPrintersTitle": "GRIPS - Brak drukarek",
+        "PrinterNotFoundTitle": "Drukarka nie została znaleziona",
+        "OK": "OK",
+        "Cancel": "Anuluj"
+    },
+    "ro-RO": {
+        "PrinterNotFound": "Imprimanta '{0}' nu a fost găsită.\n\nSelectați o imprimantă alternativă:",
+        "NoPrinters": "Nu există imprimante disponibile pe acest sistem.",
+        "NoPrintersTitle": "GRIPS - Fără imprimante",
+        "PrinterNotFoundTitle": "GRIPS - Imprimanta nu a fost găsită",
+        "OK": "OK",
+        "Cancel": "Anulare"
+    },
+    "cs-CZ": {
+        "PrinterNotFound": "Tiskárna '{0}' nebyla nalezena.\n\nVyberte alternativní tiskárnu:",
+        "NoPrinters": "V tomto systému nejsou k dispozici žádné tiskárny.",
+        "NoPrintersTitle": "GRIPS - Žádné tiskárny",
+        "PrinterNotFoundTitle": "GRIPS - Tiskárna nebyla nalezena",
+        "OK": "OK",
+        "Cancel": "Zrušit"
+    },
+    "sk-SK": {
+        "PrinterNotFound": "Tlačiareň '{0}' nebola nájdená.\n\nVyberte alternatívnu tlačiareň:",
+        "NoPrinters": "V tomto systéme nie sú k dispozícii žiadne tlačiarne.",
+        "NoPrintersTitle": "GRIPS - Žiadne tlačiarne",
+        "PrinterNotFoundTitle": "GRIPS - Tlačiareň nebola nájdená",
+        "OK": "OK",
+        "Cancel": "Zrušiť"
+    }
+}

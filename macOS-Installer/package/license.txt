@@ -1,0 +1,7 @@
+GRIPS Direct Print License
+
+Copyright (c) 2026 GRIPS
+
+Permission is hereby granted to use this software for printing documents.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND.

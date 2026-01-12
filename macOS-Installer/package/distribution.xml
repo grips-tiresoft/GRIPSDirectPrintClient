@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<installer-gui-script minSpecVersion="1">
+    <title>GRIPS Direct Print</title>
+    <organization>com.grips</organization>
+    <domains enable_localSystem="true"/>
+    <options customize="never" require-scripts="true" hostArchitectures="x86_64,arm64"/>
+    
+    <welcome file="welcome.html" mime-type="text/html"/>
+    <license file="license.txt" mime-type="text/plain"/>
+    <conclusion file="conclusion.html" mime-type="text/html"/>
+    
+    <pkg-ref id="com.grips.directprint" version="1.0.0">GRIPSDirectPrint-component.pkg</pkg-ref>
+    
+    <choices-outline>
+        <line choice="default">
+            <line choice="com.grips.directprint"/>
+        </line>
+    </choices-outline>
+    
+    <choice id="default"/>
+    <choice id="com.grips.directprint" visible="false">
+        <pkg-ref id="com.grips.directprint"/>
+    </choice>
+</installer-gui-script>
