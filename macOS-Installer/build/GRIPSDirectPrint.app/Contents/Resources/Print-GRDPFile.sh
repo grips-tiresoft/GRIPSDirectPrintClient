@@ -183,7 +183,8 @@ update_release() {
 
 # Function to get last update check time
 get_last_update_check_time() {
-    local last_check_file="$SCRIPT_DIR/last_update_check.txt"
+    local cache_dir="$HOME/Library/Caches/com.grips.directprint"
+    local last_check_file="$cache_dir/last_update_check.txt"
     
     if [[ -f "$last_check_file" ]]; then
         cat "$last_check_file"
@@ -194,7 +195,9 @@ get_last_update_check_time() {
 
 # Function to set last update check time
 set_last_update_check_time() {
-    local last_check_file="$SCRIPT_DIR/last_update_check.txt"
+    local cache_dir="$HOME/Library/Caches/com.grips.directprint"
+    mkdir -p "$cache_dir"
+    local last_check_file="$cache_dir/last_update_check.txt"
     date +%s > "$last_check_file"
 }
 
