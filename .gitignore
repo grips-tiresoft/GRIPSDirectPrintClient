@@ -4,6 +4,8 @@ Release/GRIPSDirectPrintClientInstaller.exe
 Release/GRIPSDirectPrintClientInstaller.7z
 .vscode/launch.json
 userconfig.json
+userconfig-macos.json
 *.code-workspace
 last_update_check.txt
 printersettings.json
+**/.DS_Store

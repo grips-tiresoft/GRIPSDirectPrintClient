@@ -14,16 +14,14 @@ The installer will:
 
 - macOS 10.13 or later
 - Xcode Command Line Tools (for `pkgbuild` and `productbuild`)
-- `jq` command-line tool (for JSON parsing)
+
+The `jq` tool is bundled with the application, so you don't need to install it separately.
 
 To install prerequisites:
 
 ```bash
 # Install Xcode Command Line Tools
 xcode-select --install
-
-# Install jq using Homebrew
-brew install jq
 ```
 
 ## Building the Installer
