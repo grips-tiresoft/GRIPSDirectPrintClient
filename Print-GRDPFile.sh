@@ -524,20 +524,26 @@ select_alternative_printer() {
         return 1
     fi
     
-    # Create printer list for dialog
-    local printer_list=$(echo "$printers" | tr '\n' ',' | sed 's/,$//')
+    # Convert newline-separated printers to AppleScript list format
+    # Each printer name needs to be quoted and comma-separated
+    local printer_array=()
+    while IFS= read -r printer; do
+        [[ -n "$printer" ]] && printer_array+=("\"$printer\"")
+    done <<< "$printers"
+    
+    local printer_list=$(IFS=','; echo "${printer_array[*]}")
     
     # Show selection dialog
     local selected=$(osascript <<EOF
-tell application "System Events"
-    set printerList to {"$printer_list"}
-    set selectedPrinter to choose from list (paragraphs of printerList) with prompt "Printer '$missing_printer' not found.\\n\\nSelect an alternative printer:" default items {item 1 of (paragraphs of printerList)}
-    if selectedPrinter is false then
-        return ""
-    else
-        return item 1 of selectedPrinter
-    end if
-end tell
+set printerList to {$printer_list}
+set selectedPrinter to choose from list printerList with prompt "Printer '$missing_printer' not found.
+
+Select an alternative printer:" default items {item 1 of printerList}
+if selectedPrinter is false then
+    return ""
+else
+    return item 1 of selectedPrinter
+end if
 EOF
 )
     
