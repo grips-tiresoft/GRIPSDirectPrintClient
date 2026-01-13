@@ -21,12 +21,28 @@ on open theFiles
 		-- Use user's Library/Logs for debug logging
 		set logFile to (POSIX path of (path to library folder from user domain)) & "Logs/GRIPSDirectPrint.log"
 		
-		-- Write debug info to log
-		do shell script "mkdir -p " & quoted form of ((POSIX path of (path to library folder from user domain)) & "Logs")
-		do shell script "echo 'Resources Path: " & resourcesPath & "' > " & quoted form of logFile
-		do shell script "echo 'Print Script: " & printScript & "' >> " & quoted form of logFile
-		do shell script "echo 'Files count: " & (count of theFiles) & "' >> " & quoted form of logFile
-		
+	-- Create log directory
+	do shell script "mkdir -p " & quoted form of ((POSIX path of (path to library folder from user domain)) & "Logs")
+	
+	-- Rotate log if needed (10MB limit, keep 5 rotations)
+	do shell script "
+if [ -f " & quoted form of logFile & " ]; then
+    filesize=$(stat -f%z " & quoted form of logFile & " 2>/dev/null || echo 0)
+    sizemb=$((filesize / 1024 / 1024))
+    if [ $sizemb -ge 5 ]; then
+        [ -f " & quoted form of logFile & ".5 ] && rm -f " & quoted form of logFile & ".5
+        for i in 4 3 2 1; do
+            [ -f " & quoted form of logFile & ".$i ] && mv " & quoted form of logFile & ".$i " & quoted form of logFile & ".$((i+1))
+        done
+        mv " & quoted form of logFile & " " & quoted form of logFile & ".1
+        touch " & quoted form of logFile & "
+    fi
+fi
+"
+	
+	-- Write debug info to log (append mode)
+	do shell script "echo '=== Run started at '$(date)' ===' >> " & quoted form of logFile
+	do shell script "echo 'Resources Path: " & resourcesPath & "' >> " & quoted form of logFile
 		-- Process each dropped file
 		repeat with aFile in theFiles
 			set filePath to POSIX path of aFile

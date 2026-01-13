@@ -6,15 +6,15 @@
 	<dict>
 		<key>Resources/Print-GRDPFile.sh</key>
 		<data>
-		ZSSlwQ88SGEJq9DsbLAP5liE2IQ=
+		vOblYVdtju8vBEoz0NQHt0j+jCY=
 		</data>
 		<key>Resources/Scripts/main.scpt</key>
 		<data>
-		ZwBcIZhRoed3WRLgpvzlL/i6dpE=
+		1+FS4PPUMPidzekte3uqavaGWS8=
 		</data>
 		<key>Resources/config-macos.json</key>
 		<data>
-		SbhSdEZayhP9klS4fRZbtUsUKP0=
+		rpEjYNVXKoZ6rdF50X+deJGxGWM=
 		</data>
 		<key>Resources/droplet.icns</key>
 		<data>
@@ -43,33 +43,33 @@
 		<dict>
 			<key>hash</key>
 			<data>
-			ZSSlwQ88SGEJq9DsbLAP5liE2IQ=
+			vOblYVdtju8vBEoz0NQHt0j+jCY=
 			</data>
 			<key>hash2</key>
 			<data>
-			LNNVJGMh4OjDh6XvjtaStLBNCeIkBINMyd+h6tiVGcA=
+			A1NODTK8wXUk4jDqvUZpTWLIR5PjFfHBl9+Q5pZnbSU=
 			</data>
 		</dict>
 		<key>Resources/Scripts/main.scpt</key>
 		<dict>
 			<key>hash</key>
 			<data>
-			ZwBcIZhRoed3WRLgpvzlL/i6dpE=
+			1+FS4PPUMPidzekte3uqavaGWS8=
 			</data>
 			<key>hash2</key>
 			<data>
-			zDqHH6Hmy0ne5DetPYQklaMlk5uM0OY9mRBvDyeQqlo=
+			vidQ1zIOdvSzt+K5j6rfgEkPMb7h2ML6MUXUX3Z75dk=
 			</data>
 		</dict>
 		<key>Resources/config-macos.json</key>
 		<dict>
 			<key>hash</key>
 			<data>
-			SbhSdEZayhP9klS4fRZbtUsUKP0=
+			rpEjYNVXKoZ6rdF50X+deJGxGWM=
 			</data>
 			<key>hash2</key>
 			<data>
-			w7IqvQDrf8OYGKgxXh8t3Nw1XPctShTBiuFafrwUoL0=
+			ww6f7ewPQS8sWXXD8SdQmK/zPRDudhAS2m4rA8L5dA4=
 			</data>
 		</dict>
 		<key>Resources/droplet.icns</key>

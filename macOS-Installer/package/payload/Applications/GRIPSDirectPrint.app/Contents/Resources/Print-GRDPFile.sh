@@ -50,7 +50,7 @@ if [[ -z "$CONFIG_FILE" ]]; then
 fi
 
 if [[ -z "$USER_CONFIG_FILE" ]]; then
-    USER_CONFIG_FILE="$SCRIPT_DIR/userconfig-macos.json"
+    USER_CONFIG_FILE="$HOME/Library/Application Support/GRIPSDirectPrint/userconfig-macos.json"
 fi
 
 # Global variables
@@ -77,13 +77,24 @@ get_config() {
     CONFIG[ReleaseCheckDelay]=$(parse_json "$CONFIG_FILE" '.ReleaseCheckDelay')
     CONFIG[TranscriptMaxAgeDays]=$(parse_json "$CONFIG_FILE" '.TranscriptMaxAgeDays')
     CONFIG[UsePrereleaseVersion]=$(parse_json "$CONFIG_FILE" '.UsePrereleaseVersion')
-    CONFIG[Delay]=$(parse_json "$CONFIG_FILE" '.Delay')
     
     # Merge user config if it exists
     if [[ -f "$USER_CONFIG_FILE" ]]; then
         # Override with user config values
         local user_version=$(parse_json "$USER_CONFIG_FILE" '.Version')
         [[ -n "$user_version" && "$user_version" != "null" ]] && CONFIG[Version]="$user_version"
+        
+        local user_prerelease=$(parse_json "$USER_CONFIG_FILE" '.UsePrereleaseVersion')
+        [[ -n "$user_prerelease" && "$user_prerelease" != "null" ]] && CONFIG[UsePrereleaseVersion]="$user_prerelease"
+        
+        local user_api_url=$(parse_json "$USER_CONFIG_FILE" '.ReleaseApiUrl')
+        [[ -n "$user_api_url" && "$user_api_url" != "null" ]] && CONFIG[ReleaseApiUrl]="$user_api_url"
+        
+        local user_check_delay=$(parse_json "$USER_CONFIG_FILE" '.ReleaseCheckDelay')
+        [[ -n "$user_check_delay" && "$user_check_delay" != "null" ]] && CONFIG[ReleaseCheckDelay]="$user_check_delay"
+        
+        local user_max_age=$(parse_json "$USER_CONFIG_FILE" '.TranscriptMaxAgeDays')
+        [[ -n "$user_max_age" && "$user_max_age" != "null" ]] && CONFIG[TranscriptMaxAgeDays]="$user_max_age"
     fi
 }
 
@@ -123,23 +134,29 @@ update_check() {
     if [[ "$(printf '%s\n' "$release_version" "$current_version" | sort -V | tail -n1)" != "$current_version" ]]; then
         echo "Update available: $release_version (current: $current_version)"
         
-        local temp_zip="/tmp/grdp_update_$$.zip"
-        local temp_extract="/tmp/grdp_extract_$$"
-        local download_url=$(echo "$latest_release" | "$JQ" -r '.zipball_url' 2>/dev/null)
+        # Look for .pkg asset in release
+        local pkg_download_url=$(echo "$latest_release" | "$JQ" -r '.assets[] | select(.name | test("GRIPSDirectPrint.*\\.pkg$"; "i")) | .browser_download_url' 2>/dev/null | head -n1)
         
-        # Download and extract
-        curl -sL "$download_url" -o "$temp_zip"
-        mkdir -p "$temp_extract"
-        unzip -q "$temp_zip" -d "$temp_extract"
+        if [[ -z "$pkg_download_url" || "$pkg_download_url" == "null" ]]; then
+            echo "Error: Could not find .pkg installer in release assets"
+            return
+        fi
         
-        # Find the extracted folder
-        local extracted_folder=$(find "$temp_extract" -mindepth 1 -maxdepth 1 -type d | head -n1)
+        local temp_pkg="/tmp/grdp_update_$$.pkg"
         
-        # Create update signal file
-        local update_signal_file="$SCRIPT_DIR/update_ready.txt"
-        echo "$extracted_folder" > "$update_signal_file"
+        echo "Downloading installer from: $pkg_download_url"
+        curl -sL "$pkg_download_url" -o "$temp_pkg"
         
-        rm -f "$temp_zip"
+        if [[ ! -f "$temp_pkg" ]]; then
+            echo "Error: Failed to download installer"
+            return
+        fi
+        
+        # Create update signal file with path to installer
+        local update_signal_file="$(cache_dir)/update_ready.txt"
+        echo "$temp_pkg" > "$update_signal_file"
+        
+        echo "Update downloaded successfully. Will install on next run."
     else
         echo "No update required. Current version ($current_version) is up to date."
     fi
@@ -147,44 +164,50 @@ update_check() {
 
 # Function to perform the update
 update_release() {
-    local update_signal_file="$SCRIPT_DIR/update_ready.txt"
+    local update_signal_file="$(cache_dir)/update_ready.txt"
     
     if [[ ! -f "$update_signal_file" ]]; then
         echo "Error: Update signal file not found: $update_signal_file"
         return
     fi
     
-    local extracted_folder=$(cat "$update_signal_file")
+    local pkg_file=$(cat "$update_signal_file")
     
-    if [[ -z "$extracted_folder" ]]; then
-        echo "Error: Update signal file is empty"
+    if [[ -z "$pkg_file" || ! -f "$pkg_file" ]]; then
+        echo "Error: Installer package not found: $pkg_file"
         rm -f "$update_signal_file"
         return
     fi
     
-    echo "$(date '+%Y-%m-%d %H:%M:%S') Updating release from $extracted_folder"
+    echo "$(date '+%Y-%m-%d %H:%M:%S') Installing update from $pkg_file"
     
-    # Backup current directory
-    local backup_dir="$SCRIPT_DIR.bak"
-    echo "$(date '+%Y-%m-%d %H:%M:%S') Backup script folder: $backup_dir"
+    # Remove quarantine attribute
+    echo "$(date '+%Y-%m-%d %H:%M:%S') Removing quarantine attribute..."
+    xattr -d com.apple.quarantine "$pkg_file" 2>/dev/null || true
     
-    rm -rf "$backup_dir"
-    cp -R "$SCRIPT_DIR" "$backup_dir"
+    # Install using osascript with admin privileges
+    echo "$(date '+%Y-%m-%d %H:%M:%S') Launching installer (requires administrator password)..."
     
-    # Copy new files
-    echo "$(date '+%Y-%m-%d %H:%M:%S') Copying new script folder from $extracted_folder to $SCRIPT_DIR"
-    cp -R "$extracted_folder/"* "$SCRIPT_DIR/"
+    osascript -e "do shell script \"installer -pkg '${pkg_file}' -target /\" with administrator privileges with prompt \"GRIPS Direct Print wants to install a new version.\"" 2>&1
+    local install_result=$?
     
-    rm -f "$update_signal_file"
-    
-    get_script_version
-    echo "$(date '+%Y-%m-%d %H:%M:%S') Script updated to version ${CONFIG[Version]}."
+    if [[ $install_result -eq 0 ]]; then
+        echo "$(date '+%Y-%m-%d %H:%M:%S') Update installed successfully."
+        rm -f "$update_signal_file"
+        rm -f "$pkg_file"
+        get_script_version
+        echo "$(date '+%Y-%m-%d %H:%M:%S') Script updated to version ${CONFIG[Version]}."
+    else
+        echo "$(date '+%Y-%m-%d %H:%M:%S') Error: Installation failed or was cancelled by user."
+        rm -f "$update_signal_file"
+        rm -f "$pkg_file"
+        return 1
+    fi
 }
 
 # Function to get last update check time
 get_last_update_check_time() {
-    local cache_dir="$HOME/Library/Caches/com.grips.directprint"
-    local last_check_file="$cache_dir/last_update_check.txt"
+    local last_check_file="$(cache_dir)/last_update_check.txt"
     
     if [[ -f "$last_check_file" ]]; then
         cat "$last_check_file"
@@ -195,29 +218,8 @@ get_last_update_check_time() {
 
 # Function to set last update check time
 set_last_update_check_time() {
-    local cache_dir="$HOME/Library/Caches/com.grips.directprint"
-    mkdir -p "$cache_dir"
-    local last_check_file="$cache_dir/last_update_check.txt"
+    local last_check_file="$(cache_dir)/last_update_check.txt"
     date +%s > "$last_check_file"
-}
-
-# Function to start transcript logging
-start_transcript() {
-    local transcript_dir="$SCRIPT_DIR/Transcripts"
-    mkdir -p "$transcript_dir"
-    
-    local timestamp=$(date '+%Y%m%d_%H%M%S')
-    local transcript_file="$transcript_dir/Print-GRDPFile_${timestamp}.Transcript.txt"
-    
-    # Start logging
-    #exec > >(tee -a "$transcript_file")
-    #exec 2>&1
-    
-    echo "=== Transcript started at $(date) ==="
-    
-    # Remove old transcripts
-    local max_age_days="${CONFIG[TranscriptMaxAgeDays]:-7}"
-    find "$transcript_dir" -name "Print-GRDPFile_*.Transcript.txt" -mtime +$max_age_days -delete
 }
 
 # Function to get unique filename
@@ -385,13 +387,16 @@ print_pdf_cups() {
     fi
 }
 
+cache_dir() {
+    local dir="$HOME/Library/Caches/com.grips.directprint"
+    mkdir -p "$dir"
+    echo "$dir"
+}
+
 # Main execution
 main() {
     # Load configuration
     get_config
-    
-    # Start transcript
-    start_transcript
     
     echo "Processing file: $INPUT_FILE"
     
@@ -484,12 +489,11 @@ main() {
     fi
     
     # Check for updates
-    local update_signal_file="$SCRIPT_DIR/update_ready.txt"
+    local update_signal_file="$(cache_dir)/update_ready.txt"
     
     if [[ -f "$update_signal_file" ]]; then
         update_release
     else
-        local last_check_file="$SCRIPT_DIR/last_update_check.txt"
         local last_check_time=$(get_last_update_check_time)
         local current_time=$(date +%s)
         local elapsed=$((current_time - last_check_time))
@@ -503,8 +507,6 @@ main() {
             echo "Last update check was $elapsed seconds ago. Skipping update check."
         fi
     fi
-    
-    echo "=== Transcript ended at $(date) ==="
 }
 
 # Run main function

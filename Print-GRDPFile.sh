@@ -77,13 +77,24 @@ get_config() {
     CONFIG[ReleaseCheckDelay]=$(parse_json "$CONFIG_FILE" '.ReleaseCheckDelay')
     CONFIG[TranscriptMaxAgeDays]=$(parse_json "$CONFIG_FILE" '.TranscriptMaxAgeDays')
     CONFIG[UsePrereleaseVersion]=$(parse_json "$CONFIG_FILE" '.UsePrereleaseVersion')
-    CONFIG[Delay]=$(parse_json "$CONFIG_FILE" '.Delay')
     
     # Merge user config if it exists
     if [[ -f "$USER_CONFIG_FILE" ]]; then
         # Override with user config values
         local user_version=$(parse_json "$USER_CONFIG_FILE" '.Version')
         [[ -n "$user_version" && "$user_version" != "null" ]] && CONFIG[Version]="$user_version"
+        
+        local user_prerelease=$(parse_json "$USER_CONFIG_FILE" '.UsePrereleaseVersion')
+        [[ -n "$user_prerelease" && "$user_prerelease" != "null" ]] && CONFIG[UsePrereleaseVersion]="$user_prerelease"
+        
+        local user_api_url=$(parse_json "$USER_CONFIG_FILE" '.ReleaseApiUrl')
+        [[ -n "$user_api_url" && "$user_api_url" != "null" ]] && CONFIG[ReleaseApiUrl]="$user_api_url"
+        
+        local user_check_delay=$(parse_json "$USER_CONFIG_FILE" '.ReleaseCheckDelay')
+        [[ -n "$user_check_delay" && "$user_check_delay" != "null" ]] && CONFIG[ReleaseCheckDelay]="$user_check_delay"
+        
+        local user_max_age=$(parse_json "$USER_CONFIG_FILE" '.TranscriptMaxAgeDays')
+        [[ -n "$user_max_age" && "$user_max_age" != "null" ]] && CONFIG[TranscriptMaxAgeDays]="$user_max_age"
     fi
 }
 
@@ -142,7 +153,7 @@ update_check() {
         fi
         
         # Create update signal file with path to installer
-        local update_signal_file="$SCRIPT_DIR/update_ready.txt"
+        local update_signal_file="$(cache_dir)/update_ready.txt"
         echo "$temp_pkg" > "$update_signal_file"
         
         echo "Update downloaded successfully. Will install on next run."
@@ -153,7 +164,7 @@ update_check() {
 
 # Function to perform the update
 update_release() {
-    local update_signal_file="$SCRIPT_DIR/update_ready.txt"
+    local update_signal_file="$(cache_dir)/update_ready.txt"
     
     if [[ ! -f "$update_signal_file" ]]; then
         echo "Error: Update signal file not found: $update_signal_file"
@@ -177,7 +188,7 @@ update_release() {
     # Install using osascript with admin privileges
     echo "$(date '+%Y-%m-%d %H:%M:%S') Launching installer (requires administrator password)..."
     
-    osascript -e "do shell script \"installer -pkg '${pkg_file}' -target /\" with administrator privileges" 2>&1
+    osascript -e "do shell script \"installer -pkg '${pkg_file}' -target /\" with administrator privileges with prompt \"GRIPS Direct Print wants to install a new version.\"" 2>&1
     local install_result=$?
     
     if [[ $install_result -eq 0 ]]; then
@@ -196,8 +207,7 @@ update_release() {
 
 # Function to get last update check time
 get_last_update_check_time() {
-    local cache_dir="$HOME/Library/Caches/com.grips.directprint"
-    local last_check_file="$cache_dir/last_update_check.txt"
+    local last_check_file="$(cache_dir)/last_update_check.txt"
     
     if [[ -f "$last_check_file" ]]; then
         cat "$last_check_file"
@@ -208,29 +218,8 @@ get_last_update_check_time() {
 
 # Function to set last update check time
 set_last_update_check_time() {
-    local cache_dir="$HOME/Library/Caches/com.grips.directprint"
-    mkdir -p "$cache_dir"
-    local last_check_file="$cache_dir/last_update_check.txt"
+    local last_check_file="$(cache_dir)/last_update_check.txt"
     date +%s > "$last_check_file"
-}
-
-# Function to start transcript logging
-start_transcript() {
-    local transcript_dir="$SCRIPT_DIR/Transcripts"
-    mkdir -p "$transcript_dir"
-    
-    local timestamp=$(date '+%Y%m%d_%H%M%S')
-    local transcript_file="$transcript_dir/Print-GRDPFile_${timestamp}.Transcript.txt"
-    
-    # Start logging
-    #exec > >(tee -a "$transcript_file")
-    #exec 2>&1
-    
-    echo "=== Transcript started at $(date) ==="
-    
-    # Remove old transcripts
-    local max_age_days="${CONFIG[TranscriptMaxAgeDays]:-7}"
-    find "$transcript_dir" -name "Print-GRDPFile_*.Transcript.txt" -mtime +$max_age_days -delete
 }
 
 # Function to get unique filename
@@ -398,13 +387,16 @@ print_pdf_cups() {
     fi
 }
 
+cache_dir() {
+    local dir="$HOME/Library/Caches/com.grips.directprint"
+    mkdir -p "$dir"
+    echo "$dir"
+}
+
 # Main execution
 main() {
     # Load configuration
     get_config
-    
-    # Start transcript
-    start_transcript
     
     echo "Processing file: $INPUT_FILE"
     
@@ -497,12 +489,11 @@ main() {
     fi
     
     # Check for updates
-    local update_signal_file="$SCRIPT_DIR/update_ready.txt"
+    local update_signal_file="$(cache_dir)/update_ready.txt"
     
     if [[ -f "$update_signal_file" ]]; then
         update_release
     else
-        local last_check_file="$SCRIPT_DIR/last_update_check.txt"
         local last_check_time=$(get_last_update_check_time)
         local current_time=$(date +%s)
         local elapsed=$((current_time - last_check_time))
@@ -516,8 +507,6 @@ main() {
             echo "Last update check was $elapsed seconds ago. Skipping update check."
         fi
     fi
-    
-    echo "=== Transcript ended at $(date) ==="
 }
 
 # Run main function

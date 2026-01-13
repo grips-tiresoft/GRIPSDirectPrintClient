@@ -1,33 +1,7 @@
 {
-    "Company": "GRIPS_DE_TEST",
-    "BasicAuthLogin": "GRDPWSUSER",
-    "OAuth2CustomerAADIDOrDomain": "1234",
-    "OAuth2ClientID": "1234",
-    "OAuth2ClientSecret": "1234",
-    "BaseURL": "https://localhost:7048/BC240/ODatav4",
-    "RespCtr": "0555",
-    "IgnorePrinters": [
-        "Save as PDF",
-        "Save to PDF",
-        "Print to PDF",
-        "Adobe PDF",
-        "Microsoft Print to PDF",
-        "Fax",
-        "Send to OneNote",
-        "OneNote",
-        "Canon IJ Network",
-        "HP Easy Start",
-        "EPSON Software",
-        "Brother iPrint&Scan"
-    ],
-    "PDFPrinter": "CUPS",
-    "PDFPrinter_command": "lp",
-    "Delay": "2",
-    "UpdateDelay": "300",
-    "ReleaseCheckDelay": "3600",
     "ReleaseApiUrl": "https://api.github.com/repos/grips-tiresoft/GRIPSDirectPrintClient/releases/latest",
+    "ReleaseCheckDelay": "3600",
     "TranscriptMaxAgeDays": "7",
-    "TranscriptRotationTimeMins": "60",
     "UsePrereleaseVersion": false,
-    "Version": "1.0.38"
+    "Version": "1.0.39"
 }
