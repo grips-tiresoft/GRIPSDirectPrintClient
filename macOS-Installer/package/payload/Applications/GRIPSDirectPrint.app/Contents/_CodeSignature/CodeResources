@@ -6,7 +6,7 @@
 	<dict>
 		<key>Resources/Print-GRDPFile.sh</key>
 		<data>
-		vOblYVdtju8vBEoz0NQHt0j+jCY=
+		OrwIHMpq3x61l3wTrfb5OxcRto8=
 		</data>
 		<key>Resources/Scripts/main.scpt</key>
 		<data>
@@ -32,10 +32,6 @@
 		<data>
 		wJzRL17XTCLMw08wC/yNJYHaS7w=
 		</data>
-		<key>Resources/last_update_check.txt</key>
-		<data>
-		CKyz6abuoU0cxjDcefpMnG0zZc8=
-		</data>
 	</dict>
 	<key>files2</key>
 	<dict>
@@ -43,11 +39,11 @@
 		<dict>
 			<key>hash</key>
 			<data>
-			vOblYVdtju8vBEoz0NQHt0j+jCY=
+			OrwIHMpq3x61l3wTrfb5OxcRto8=
 			</data>
 			<key>hash2</key>
 			<data>
-			A1NODTK8wXUk4jDqvUZpTWLIR5PjFfHBl9+Q5pZnbSU=
+			niaRfLHNHy4GfHH/gleQyw+EKvOUSuc1aM3+Hd23KXA=
 			</data>
 		</dict>
 		<key>Resources/Scripts/main.scpt</key>
@@ -114,17 +110,6 @@
 			<key>hash2</key>
 			<data>
 			pT3sF6NPlHzZRsHXOKHg+eLHSeIL+LomWnCIZUvSSNg=
-			</data>
-		</dict>
-		<key>Resources/last_update_check.txt</key>
-		<dict>
-			<key>hash</key>
-			<data>
-			CKyz6abuoU0cxjDcefpMnG0zZc8=
-			</data>
-			<key>hash2</key>
-			<data>
-			uCzo260GHl0FaT7EpGp5kgGcm0jfrtaCSnqU9U+H2EA=
 			</data>
 		</dict>
 	</dict>
