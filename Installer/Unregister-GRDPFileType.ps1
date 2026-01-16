@@ -46,7 +46,7 @@ try {
     if (Test-Path $extKey) {
         Write-Host "1. Removing file extension registration..." -ForegroundColor Green
         Remove-Item -Path $extKey -Recurse -Force
-        Write-Host "   ✓ Extension unregistered" -ForegroundColor Green
+        Write-Host "   [OK] Extension unregistered" -ForegroundColor Green
         $removed = $true
     } else {
         Write-Host "1. File extension not registered (skipping)" -ForegroundColor Yellow
@@ -58,7 +58,7 @@ try {
     if (Test-Path $progIdKey) {
         Write-Host "2. Removing ProgID registration..." -ForegroundColor Green
         Remove-Item -Path $progIdKey -Recurse -Force
-        Write-Host "   ✓ ProgID unregistered" -ForegroundColor Green
+        Write-Host "   [OK] ProgID unregistered" -ForegroundColor Green
         $removed = $true
     } else {
         Write-Host "2. ProgID not registered (skipping)" -ForegroundColor Yellow
@@ -88,7 +88,7 @@ try {
         # SHCNE_ASSOCCHANGED = 0x08000000, SHCNF_IDLIST = 0x0000
         [Shell32.Functions]::SHChangeNotify(0x08000000, 0x0000, [IntPtr]::Zero, [IntPtr]::Zero)
         
-        Write-Host "   ✓ Explorer notified" -ForegroundColor Green
+        Write-Host "   [OK] Explorer notified" -ForegroundColor Green
         Write-Host ""
     }
 

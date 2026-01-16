@@ -74,7 +74,7 @@ try {
     
     New-Item -Path $extKey -Force | Out-Null
     New-ItemProperty -Path $extKey -Name "(Default)" -Value $progId -Force | Out-Null
-    Write-Host "   ✓ Extension registered" -ForegroundColor Green
+    Write-Host "   [OK] Extension registered" -ForegroundColor Green
     Write-Host ""
 
     # Register the ProgID
@@ -84,7 +84,7 @@ try {
     New-Item -Path $progIdKey -Force | Out-Null
     New-ItemProperty -Path $progIdKey -Name "(Default)" -Value $friendlyTypeName -Force | Out-Null
     New-ItemProperty -Path $progIdKey -Name "FriendlyTypeName" -Value $friendlyTypeName -Force | Out-Null
-    Write-Host "   ✓ ProgID registered" -ForegroundColor Green
+    Write-Host "   [OK] ProgID registered" -ForegroundColor Green
     Write-Host ""
 
     # Set the default icon
@@ -92,7 +92,7 @@ try {
     $iconKey = "$progIdKey\DefaultIcon"
     New-Item -Path $iconKey -Force | Out-Null
     New-ItemProperty -Path $iconKey -Name "(Default)" -Value $iconPath -Force | Out-Null
-    Write-Host "   ✓ Icon set" -ForegroundColor Green
+    Write-Host "   [OK] Icon set" -ForegroundColor Green
     Write-Host ""
 
     # Register the shell command to open the file
@@ -108,9 +108,9 @@ try {
     
     New-Item -Path $commandKey -Force | Out-Null
     # Use wscript.exe to run the VBScript with the file as an argument
-    $commandValue = "`"C:\Windows\System32\wscript.exe`" `"$vbsScriptPath`" `"%1`""
+    $commandValue = '"C:\Windows\System32\wscript.exe" "' + $vbsScriptPath + '" "%1"'
     New-ItemProperty -Path $commandKey -Name "(Default)" -Value $commandValue -Force | Out-Null
-    Write-Host "   ✓ Shell command registered" -ForegroundColor Green
+    Write-Host "   [OK] Shell command registered" -ForegroundColor Green
     Write-Host ""
 
     # Notify Windows Explorer that file associations have changed
@@ -135,7 +135,7 @@ try {
     # SHCNE_ASSOCCHANGED = 0x08000000, SHCNF_IDLIST = 0x0000
     [Shell32.Functions]::SHChangeNotify(0x08000000, 0x0000, [IntPtr]::Zero, [IntPtr]::Zero)
     
-    Write-Host "   ✓ Explorer notified" -ForegroundColor Green
+    Write-Host "   [OK] Explorer notified" -ForegroundColor Green
     Write-Host ""
 
     Write-Host "=======================================" -ForegroundColor Cyan
