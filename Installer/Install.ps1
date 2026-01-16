@@ -428,28 +428,6 @@ $config = Get-Content $configFilePath -Encoding UTF8 | ConvertFrom-Json
 #$releaseApiUrl = $config.ReleaseApiUrl;
 $installPath = $config.InstallPath;
 
-#Write-Host "Downloading client..." -ForegroundColor White
-
-#$LatestRelease = Invoke-RestMethod -Uri $releaseApiUrl -Method Get
-    
-#$TempZipFile = [System.IO.Path]::GetTempFileName() + ".zip"
-#$TempExtractPath = [System.IO.Path]::GetTempPath() + [System.Guid]::NewGuid().ToString()
-
-# Get the URL of the source code zip
-#$downloadUrl = $LatestRelease.zipball_url
-
-# Download the ZIP file containing the new script version and other files
-#Invoke-WebRequest -Uri $downloadUrl -OutFile $TempZipFile
-
-# Extract the ZIP file to a temporary directory
-#Expand-Archive -Path $TempZipFile -DestinationPath $TempExtractPath
-
-# Find the sub-folder in the extracted directory
-#$extractedSubFolder = Get-ChildItem -Path $TempExtractPath | Where-Object { $_.PSIsContainer } | Select-Object -First 1
-
-# Clean up temporary files
-#Remove-Item -Path $TempZipFile -Force
-
 Copy-ScriptFolder
 
 Stop-Transcript
@@ -495,23 +473,8 @@ if ($decision -eq 0) {
     $userConfig | Out-File -FilePath $userConfigPath -Encoding UTF8
 }
 
-# Now using .sig files which are automatically associated with Signotec SignoSign2
-# Create the file association for .signpdf files
-#Write-Host "cmd.exe /c ""assoc $($config.Sign_ext)=SignedPDFFile"""
-#& cmd.exe /c "assoc $($config.Sign_ext)=SignedPDFFile"
-
-#Write-Host "cmd.exe /c ftype SignedPDFFile=""""$($config.Sign_exe)"""" """"$($config.Sign_params)"""""
-#& cmd.exe /c ftype SignedPDFFile="""$($Config.Sign_exe)""" ""$config.Sign_params""
-
-# Create the file association and file type for .grdp files
-Write-Host 'cmd.exe /c "assoc .grdp=GRIPS.DirectPrint.Archive"'
-& cmd.exe /c "assoc .grdp=GRIPS.DirectPrint.Archive"
-
-Write-Host "ftype GRIPS.DirectPrint.Archive=wscript.exe ""$installPath\Print-GRDPFile.vbs"" ""%1"""
-& cmd.exe /c "ftype GRIPS.DirectPrint.Archive=wscript.exe ""$installPath\Print-GRDPFile.vbs"" ""%1"""
-
-# Clean up the extracted temporary directory
-#Remove-Item -Path $TempExtractPath -Recurse -Force
+# Create the file association and file type for .grdp files (system-wide)
+. "$ScriptPath\Register-GRDPFileType.ps1"
 
 Write-Host "Installation completed"
 
