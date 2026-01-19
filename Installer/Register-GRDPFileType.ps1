@@ -64,8 +64,50 @@ try {
         New-PSDrive -Name HKCR -PSProvider Registry -Root HKEY_CLASSES_ROOT | Out-Null
     }
 
+    # Clean up any existing auto_file associations that might interfere
+    Write-Host "1. Cleaning up existing associations..." -ForegroundColor Green
+    $autoFileKey = "HKCR:\${fileExtension}_auto_file"
+    if (Test-Path $autoFileKey) {
+        Write-Host "   Removing ${fileExtension}_auto_file..." -ForegroundColor Yellow
+        Remove-Item -Path $autoFileKey -Recurse -Force
+    }
+    
+    # Check for UserChoice keys (these override system defaults and CANNOT be removed programmatically)
+    $hasUserChoice = $false
+    $userChoiceKey = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\FileExts\$fileExtension\UserChoice"
+    if (Test-Path $userChoiceKey) {
+        $hasUserChoice = $true
+        $currentChoice = (Get-ItemProperty -Path $userChoiceKey -Name "ProgId" -ErrorAction SilentlyContinue).ProgId
+        Write-Host "   WARNING: User has manually selected an app to open $fileExtension files: $currentChoice" -ForegroundColor Yellow
+    }
+    
+    # Also check HKEY_USERS for all loaded user profiles
+    $hkuPath = "Registry::HKEY_USERS"
+    if (Test-Path $hkuPath) {
+        Get-ChildItem -Path $hkuPath -ErrorAction SilentlyContinue | ForEach-Object {
+            $userChoicePath = Join-Path $_.PSPath "Software\Microsoft\Windows\CurrentVersion\Explorer\FileExts\$fileExtension\UserChoice"
+            if (Test-Path $userChoicePath) {
+                $hasUserChoice = $true
+                $profileChoice = (Get-ItemProperty -Path $userChoicePath -Name "ProgId" -ErrorAction SilentlyContinue).ProgId
+                Write-Host "   WARNING: User profile $($_.PSChildName) has manual app selection: $profileChoice" -ForegroundColor Yellow
+            }
+        }
+    }
+    
+    if ($hasUserChoice) {
+        Write-Host "" 
+        Write-Host "   IMPORTANT: Windows protects user app choices. To use GRIPS Direct Print:" -ForegroundColor Yellow
+        Write-Host "   1. Right-click a .grdp file in Explorer" -ForegroundColor Yellow
+        Write-Host "   2. Select 'Open with' > 'Choose another app'" -ForegroundColor Yellow
+        Write-Host "   3. Select 'GRIPS Direct Print' from the list" -ForegroundColor Yellow
+        Write-Host "   4. Check 'Always use this app' and click OK" -ForegroundColor Yellow
+        Write-Host "" 
+    }
+    Write-Host "   [OK] Cleanup completed" -ForegroundColor Green
+    Write-Host ""
+
     # Register the file extension
-    Write-Host "1. Registering file extension $fileExtension..." -ForegroundColor Green
+    Write-Host "2. Registering file extension $fileExtension..." -ForegroundColor Green
     $extKey = "HKCR:\$fileExtension"
     
     if (Test-Path $extKey) {
@@ -74,11 +116,15 @@ try {
     
     New-Item -Path $extKey -Force | Out-Null
     New-ItemProperty -Path $extKey -Name "(Default)" -Value $progId -Force | Out-Null
+    
+    # Also set the PerceivedType to help Windows understand this is a document type
+    New-ItemProperty -Path $extKey -Name "PerceivedType" -Value "document" -Force | Out-Null
+    
     Write-Host "   [OK] Extension registered" -ForegroundColor Green
     Write-Host ""
 
     # Register the ProgID
-    Write-Host "2. Registering ProgID $progId..." -ForegroundColor Green
+    Write-Host "3. Registering ProgID $progId..." -ForegroundColor Green
     $progIdKey = "HKCR:\$progId"
     
     New-Item -Path $progIdKey -Force | Out-Null
@@ -88,7 +134,7 @@ try {
     Write-Host ""
 
     # Set the default icon
-    Write-Host "3. Setting default icon..." -ForegroundColor Green
+    Write-Host "4. Setting default icon..." -ForegroundColor Green
     $iconKey = "$progIdKey\DefaultIcon"
     New-Item -Path $iconKey -Force | Out-Null
     New-ItemProperty -Path $iconKey -Name "(Default)" -Value $iconPath -Force | Out-Null
@@ -96,7 +142,7 @@ try {
     Write-Host ""
 
     # Register the shell command to open the file
-    Write-Host "4. Registering shell open command..." -ForegroundColor Green
+    Write-Host "5. Registering shell open command..." -ForegroundColor Green
     $shellKey = "$progIdKey\shell"
     $openKey = "$shellKey\open"
     $commandKey = "$openKey\command"
@@ -114,7 +160,7 @@ try {
     Write-Host ""
 
     # Notify Windows Explorer that file associations have changed
-    Write-Host "5. Notifying Windows Explorer of changes..." -ForegroundColor Green
+    Write-Host "6. Notifying Windows Explorer of changes..." -ForegroundColor Green
     
     # Define the SHChangeNotify function signature
     $signature = @'

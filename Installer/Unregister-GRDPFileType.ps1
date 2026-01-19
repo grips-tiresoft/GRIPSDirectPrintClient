@@ -53,6 +53,51 @@ try {
     }
     Write-Host ""
 
+    # Remove any auto_file associations
+    $autoFileKey = "HKCR:\${fileExtension}_auto_file"
+    if (Test-Path $autoFileKey) {
+        Write-Host "1a. Removing auto_file association..." -ForegroundColor Green
+        Remove-Item -Path $autoFileKey -Recurse -Force
+        Write-Host "   [OK] Auto_file removed" -ForegroundColor Green
+        $removed = $true
+    }
+    Write-Host ""
+    
+    # Check for UserChoice keys (Windows protects these - cannot be removed programmatically)
+    Write-Host "1b. Checking for UserChoice overrides..." -ForegroundColor Green
+    $hasUserChoice = $false
+    
+    # HKEY_CURRENT_USER
+    $userChoiceKey = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\FileExts\$fileExtension\UserChoice"
+    if (Test-Path $userChoiceKey) {
+        $currentChoice = (Get-ItemProperty -Path $userChoiceKey -Name "ProgId" -ErrorAction SilentlyContinue).ProgId
+        Write-Host "   Found UserChoice for current user: $currentChoice" -ForegroundColor Yellow
+        $hasUserChoice = $true
+    }
+    
+    # HKEY_USERS for all loaded profiles
+    $hkuPath = "Registry::HKEY_USERS"
+    if (Test-Path $hkuPath) {
+        Get-ChildItem -Path $hkuPath -ErrorAction SilentlyContinue | ForEach-Object {
+            $userChoicePath = Join-Path $_.PSPath "Software\Microsoft\Windows\CurrentVersion\Explorer\FileExts\$fileExtension\UserChoice"
+            if (Test-Path $userChoicePath) {
+                $profileChoice = (Get-ItemProperty -Path $userChoicePath -Name "ProgId" -ErrorAction SilentlyContinue).ProgId
+                Write-Host "   Found UserChoice for profile $($_.PSChildName): $profileChoice" -ForegroundColor Yellow
+                $hasUserChoice = $true
+            }
+        }
+    }
+    
+    if ($hasUserChoice) {
+        Write-Host "" 
+        Write-Host "   NOTE: User app preferences remain (Windows protects these)" -ForegroundColor Yellow
+        Write-Host "   To reset: Right-click a .grdp file > Open with > Choose another app" -ForegroundColor Yellow
+        Write-Host "" 
+    } else {
+        Write-Host "   No UserChoice overrides found" -ForegroundColor Green
+    }
+    Write-Host ""
+
     # Remove the ProgID registration
     $progIdKey = "HKCR:\$progId"
     if (Test-Path $progIdKey) {
