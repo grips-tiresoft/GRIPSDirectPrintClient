@@ -62,6 +62,15 @@
                 }
             }
         },
+        "FR": {
+            "Name": "France",
+            "Databases": {
+                "FR PROD": {
+                    "BaseURL": "https://grips-fr.dynamicstocloud.com:1113/WS_FR_PROD/ODataV4/",
+                    "Company": "NAS Company"
+                }
+            }
+        },
         "IT": {
             "Name": "Italia",
             "Databases": {
@@ -69,7 +78,7 @@
                     "BaseURL": "https://TEST-GRIPS-IT.dynamicstocloud.com:1113/ST-149905-DEV/ODataV4/",
                     "Company": "PlayGround"
                 },
-                "IT": {
+                "IT PROD": {
                     "BaseURL": "https://grips-it.dynamicstocloud.com:1113/WS_IT_PROD/ODataV4/",
                     "Company": "NAS Company"
                 }
