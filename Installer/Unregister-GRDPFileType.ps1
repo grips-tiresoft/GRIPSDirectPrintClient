@@ -22,6 +22,7 @@ $ErrorActionPreference = "Stop"
 # Configuration
 $fileExtension = ".grdp"
 $progId = "GRIPS.DirectPrint.Archive"
+$mimeType = "application/x-grdp-archive"
 
 Write-Host "=======================================" -ForegroundColor Cyan
 Write-Host "GRIPS Direct Print File Type Unregistration" -ForegroundColor Cyan
@@ -31,6 +32,7 @@ Write-Host ""
 Write-Host "Unregistering file type with the following settings:" -ForegroundColor White
 Write-Host "  File Extension: $fileExtension" -ForegroundColor Gray
 Write-Host "  ProgID: $progId" -ForegroundColor Gray
+Write-Host "  MIME Type: $mimeType" -ForegroundColor Gray
 Write-Host ""
 
 try {
@@ -110,9 +112,21 @@ try {
     }
     Write-Host ""
 
+    # Remove the MIME type registration
+    $mimeDbKey = "HKCR:\MIME\Database\Content Type\$mimeType"
+    if (Test-Path $mimeDbKey) {
+        Write-Host "3. Removing MIME type registration..." -ForegroundColor Green
+        Remove-Item -Path $mimeDbKey -Recurse -Force
+        Write-Host "   [OK] MIME type unregistered" -ForegroundColor Green
+        $removed = $true
+    } else {
+        Write-Host "3. MIME type not registered (skipping)" -ForegroundColor Yellow
+    }
+    Write-Host ""
+
     if ($removed) {
         # Notify Windows Explorer that file associations have changed
-        Write-Host "3. Notifying Windows Explorer of changes..." -ForegroundColor Green
+        Write-Host "4. Notifying Windows Explorer of changes..." -ForegroundColor Green
         
         # Define the SHChangeNotify function signature
         $signature = @'

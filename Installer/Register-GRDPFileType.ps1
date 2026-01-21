@@ -29,6 +29,7 @@ $friendlyTypeName = "GRIPS Direct Print Archive"
 $openWithDisplayName = "GRIPS Direct Print"
 $vbsScriptPath = "C:\ProgramData\GRIPSDirectPrintClient\Print-GRDPFile.vbs"
 $iconPath = "C:\ProgramData\GRIPSDirectPrintClient\grips.ico"
+$mimeType = "application/x-grdp-archive"
 
 Write-Host "=======================================" -ForegroundColor Cyan
 Write-Host "GRIPS Direct Print File Type Registration" -ForegroundColor Cyan
@@ -56,6 +57,7 @@ Write-Host "  Friendly Name: $friendlyTypeName" -ForegroundColor Gray
 Write-Host "  Open With Display: $openWithDisplayName" -ForegroundColor Gray
 Write-Host "  VBScript Handler: $vbsScriptPath" -ForegroundColor Gray
 Write-Host "  Icon: $iconPath" -ForegroundColor Gray
+Write-Host "  MIME Type: $mimeType" -ForegroundColor Gray
 Write-Host ""
 
 try {
@@ -117,14 +119,27 @@ try {
     New-Item -Path $extKey -Force | Out-Null
     New-ItemProperty -Path $extKey -Name "(Default)" -Value $progId -Force | Out-Null
     
-    # Also set the PerceivedType to help Windows understand this is a document type
+    # Set the PerceivedType to help Windows understand this is a document type
     New-ItemProperty -Path $extKey -Name "PerceivedType" -Value "document" -Force | Out-Null
+    
+    # Set the MIME Content Type
+    New-ItemProperty -Path $extKey -Name "Content Type" -Value $mimeType -Force | Out-Null
     
     Write-Host "   [OK] Extension registered" -ForegroundColor Green
     Write-Host ""
 
+    # Register the MIME type in the MIME Database
+    Write-Host "3. Registering MIME type $mimeType..." -ForegroundColor Green
+    $mimeDbKey = "HKCR:\MIME\Database\Content Type\$mimeType"
+    
+    New-Item -Path $mimeDbKey -Force | Out-Null
+    New-ItemProperty -Path $mimeDbKey -Name "Extension" -Value $fileExtension -Force | Out-Null
+    
+    Write-Host "   [OK] MIME type registered" -ForegroundColor Green
+    Write-Host ""
+
     # Register the ProgID
-    Write-Host "3. Registering ProgID $progId..." -ForegroundColor Green
+    Write-Host "4. Registering ProgID $progId..." -ForegroundColor Green
     $progIdKey = "HKCR:\$progId"
     
     New-Item -Path $progIdKey -Force | Out-Null
@@ -134,7 +149,7 @@ try {
     Write-Host ""
 
     # Set the default icon
-    Write-Host "4. Setting default icon..." -ForegroundColor Green
+    Write-Host "5. Setting default icon..." -ForegroundColor Green
     $iconKey = "$progIdKey\DefaultIcon"
     New-Item -Path $iconKey -Force | Out-Null
     New-ItemProperty -Path $iconKey -Name "(Default)" -Value $iconPath -Force | Out-Null
@@ -142,7 +157,7 @@ try {
     Write-Host ""
 
     # Register the shell command to open the file
-    Write-Host "5. Registering shell open command..." -ForegroundColor Green
+    Write-Host "6. Registering shell open command..." -ForegroundColor Green
     $shellKey = "$progIdKey\shell"
     $openKey = "$shellKey\open"
     $commandKey = "$openKey\command"
@@ -160,7 +175,7 @@ try {
     Write-Host ""
 
     # Notify Windows Explorer that file associations have changed
-    Write-Host "6. Notifying Windows Explorer of changes..." -ForegroundColor Green
+    Write-Host "7. Notifying Windows Explorer of changes..." -ForegroundColor Green
     
     # Define the SHChangeNotify function signature
     $signature = @'
