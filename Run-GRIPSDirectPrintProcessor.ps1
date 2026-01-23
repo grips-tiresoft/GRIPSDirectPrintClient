@@ -545,6 +545,8 @@ while ($true) {
                     -Body "{""Status"":""Printed"",""PrinterMessage"":""Passed to $(Split-Path -Path $Executable -Leaf) for $Action""}" `
                     -Authentication $Authentication -GetParametersOnly)
 
+            Write-Host "$(Get-Date -Format "yyyy-MM-dd HH:mm:ss") Command: `"$Executable $Params`"" -ForegroundColor Gray
+
             Start-Job -Arg $Job, $Executable, $Params, $PaperSourceArgument, $InvokeRestMethodParameters, $PDFFileName -ScriptBlock {
                 Param($Job, $Executable, $Params, $PaperSourceArgument, $InvokeRestMethodParameters, $PDFFileName)
                 #Start-Transcript -Path "$env:TEMP\GRIPSDirectPrintProcessor_$($Job.RowNo).log" -Append
