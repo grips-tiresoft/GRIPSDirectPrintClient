@@ -68,10 +68,12 @@ try {
 
     # Clean up any existing auto_file associations that might interfere
     Write-Host "1. Cleaning up existing associations..." -ForegroundColor Green
-    $autoFileKey = "HKCR:\${fileExtension}_auto_file"
-    if (Test-Path $autoFileKey) {
+    $autoFileKeyPath = "${fileExtension}_auto_file"
+    $autoFileRegKey = [Microsoft.Win32.Registry]::ClassesRoot.OpenSubKey($autoFileKeyPath, $false)
+    if ($null -ne $autoFileRegKey) {
+        $autoFileRegKey.Close()
         Write-Host "   Removing ${fileExtension}_auto_file..." -ForegroundColor Yellow
-        Remove-Item -Path $autoFileKey -Recurse -Force
+        [Microsoft.Win32.Registry]::ClassesRoot.DeleteSubKeyTree($autoFileKeyPath)
     }
     
     # Check for UserChoice keys (these override system defaults and CANNOT be removed programmatically)
@@ -110,12 +112,15 @@ try {
 
     # Register the file extension
     Write-Host "2. Registering file extension $fileExtension..." -ForegroundColor Green
-    $extKey = "HKCR:\$fileExtension"
+    $extKeyPath = "$fileExtension"
+    $extRegKey = [Microsoft.Win32.Registry]::ClassesRoot.OpenSubKey($extKeyPath, $false)
     
-    if (Test-Path $extKey) {
+    if ($null -ne $extRegKey) {
+        $extRegKey.Close()
         Write-Host "   Extension already registered, updating..." -ForegroundColor Yellow
     }
     
+    $extKey = "HKCR:\$fileExtension"
     New-Item -Path $extKey -Force | Out-Null
     New-ItemProperty -Path $extKey -Name "(Default)" -Value $progId -Force | Out-Null
     
@@ -130,10 +135,14 @@ try {
 
     # Register the MIME type in the MIME Database
     Write-Host "3. Registering MIME type $mimeType..." -ForegroundColor Green
-    $mimeDbKey = "HKCR:\MIME\Database\Content Type\$mimeType"
     
-    New-Item -Path $mimeDbKey -Force | Out-Null
-    New-ItemProperty -Path $mimeDbKey -Name "Extension" -Value $fileExtension -Force | Out-Null
+    # Use .NET Registry API to create the key with forward slash in the name
+    # PowerShell's New-Item treats forward slashes as path separators, which is incorrect for MIME types
+    $contentTypeKey = [Microsoft.Win32.Registry]::ClassesRoot.OpenSubKey("MIME\Database\Content Type", $true)
+    $mimeKey = $contentTypeKey.CreateSubKey($mimeType)
+    $mimeKey.SetValue("Extension", $fileExtension, [Microsoft.Win32.RegistryValueKind]::String)
+    $mimeKey.Close()
+    $contentTypeKey.Close()
     
     Write-Host "   [OK] MIME type registered" -ForegroundColor Green
     Write-Host ""
@@ -219,4 +228,4 @@ try {
     Read-Host "Press Enter to exit..."
     exit 1
 }
-Read-Host "Press Enter to exit..."
+sleep 2
