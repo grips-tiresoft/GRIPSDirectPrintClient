@@ -26,5 +26,5 @@
     "TranscriptMaxAgeDays": "7",
     "TranscriptRotationTimeMins": "60",
     "UsePrereleaseVersion": false,
-    "Version": "1.0.42"
+    "Version": "1.0.43"
 }
