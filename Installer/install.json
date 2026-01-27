@@ -22,6 +22,33 @@
                 }
             }
         },
+        "AT": {
+            "Name": "Österreich",
+            "Databases": {
+                "GRIPS_AT_PROD": {
+                    "BaseURL": "https://at.gripsportal.com:30220/AT_PROD_WS/ODataV4/",
+                    "Company": "NAS Company PROD"
+                }
+            }
+        },
+        "CE": {
+            "Name": "Central Europe",
+            "Databases": {
+                "CE PROD": {
+                    "BaseURL": "https://grips-ce.dynamicstocloud.com:1113/WS_CE_PROD/ODataV4/",
+                    "Company": "NAS Company"
+                }
+            }
+        },
+        "CH": {
+            "Name": "Schweiz",
+            "Databases": {
+                "GRIPS_CH_PROD": {
+                    "BaseURL": "https://ch.gripsportal.com:30221/CH_PROD_WS/ODataV4/",
+                    "Company": "NAS Company PROD"
+                }
+            }
+        },
         "DE": {
             "Name": "Deutchland",
             "StartIndex": "0",
@@ -33,32 +60,59 @@
                 "GRIPS_DE_PROD1": {
                     "BaseURL": "https://de.gripsportal.com:30226/DE_PROD1_WS/ODataV4/",
                     "Company": "NAS Company PROD1"
+                },
+                "GRIPS_DE_PROD2": {
+                    "BaseURL": "https://de.gripsportal.com:30227/DE_PROD2_WS/ODataV4/",
+                    "Company": "NAS Company PROD2"
+                },
+                "GRIPS_DE_PROD3": {
+                    "BaseURL": "https://de.gripsportal.com:30228/DE_PROD3_WS/ODataV4/",
+                    "Company": "NAS Company PROD3"
+                },
+                "GRIPS_DE_PROD4": {
+                    "BaseURL": "https://de.gripsportal.com:30229/DE_PROD4_WS/ODataV4/",
+                    "Company": "NAS Company PROD4"
+                },
+                "GRIPS_DE_PROD5": {
+                    "BaseURL": "https://de.gripsportal.com:30230/DE_PROD5_WS/ODataV4/",
+                    "Company": "NAS Company PROD5"
+                },
+                "GRIPS_DE_PROD6": {
+                    "BaseURL": "https://de.gripsportal.com:30231/DE_PROD6_WS/ODataV4/",
+                    "Company": "NAS Company PROD6"
+                },
+                "GRIPS_DE_PROD7": {
+                    "BaseURL": "https://de.gripsportal.com:30232/DE_PROD7_WS/ODataV4/",
+                    "Company": "NAS Company PROD7"
+                },
+                "GRIPS_DE_PROD8": {
+                    "BaseURL": "https://de.gripsportal.com:30233/DE_PROD8_WS/ODataV4/",
+                    "Company": "NAS Company PROD8"
+                },
+                "GRIPS_DE_PROD9": {
+                    "BaseURL": "https://de.gripsportal.com:30234/DE_PROD9_WS/ODataV4/",
+                    "Company": "NAS Company PROD9"
+                },
+                "GRIPS_DE_PROD10": {
+                    "BaseURL": "https://de.gripsportal.com:30235/DE_PROD10_WS/ODataV4/",
+                    "Company": "NAS Company PROD10"
+                },
+                "GRIPS_DE_PROD_Q1": {
+                    "BaseURL": "https://de.gripsportal.com:30236/DE_PROD_Q1_WS/ODataV4/",
+                    "Company": "NAS Company PROD_Q1"
+                },
+                "GRIPS_DE_PROD_Q2": {
+                    "BaseURL": "https://de.gripsportal.com:30237/DE_PROD_Q2_WS/ODataV4/",
+                    "Company": "NAS Company PROD_Q2"
                 }
             }
         },
-        "AT": {
-            "Name": "Österreich",
+        "ES": {
+            "Name": "Spain",
             "Databases": {
-                "GRIPS_AT_PROD": {
-                    "BaseURL": "https://at.gripsportal.com:30220/AT_PROD_WS/ODataV4/",
-                    "Company": "NAS Company PROD"
-                }
-            }
-        },
-        "CH": {
-            "Name": "Schweiz",
-            "Databases": {
-                "GRIPS_CH24_TEST": {
-                    "BaseURL": "https://testnav.gripsportal.com:49000/CH24_TEST_WS/ODataV4/",
-                    "Company": "GRIPS_CH_TEST"
-                },
-                "GRIPS_CH24_DEV (Companial)": {
-                    "BaseURL": "https://st-145410.dynamicstocloud.com:1133/ST-145410-DEV/ODataV4/",
-                    "Company": "GRIPS_CH_TEST"
-                },
-                "GRIPS_CH_PROD": {
-                    "BaseURL": "https://ch.gripsportal.com:30221/CH_PROD_WS/ODataV4/",
-                    "Company": "NAS Company PROD"
+                "ES PROD": {
+                    "BaseURL": "https://grips-es.dynamicstocloud.com:1113/WS_ES_PROD/ODataV4/",
+                    "Company": "NAS Company"
                 }
             }
         },
@@ -74,10 +128,6 @@
         "IT": {
             "Name": "Italia",
             "Databases": {
-                "IT24 TEST": {
-                    "BaseURL": "https://TEST-GRIPS-IT.dynamicstocloud.com:1113/ST-149905-DEV/ODataV4/",
-                    "Company": "PlayGround"
-                },
                 "IT PROD": {
                     "BaseURL": "https://grips-it.dynamicstocloud.com:1113/WS_IT_PROD/ODataV4/",
                     "Company": "NAS Company"
@@ -87,8 +137,8 @@
         "NL": {
             "Name": "Nederland",
             "Databases": {
-                "NL24 DEV (Companial)": {
-                    "BaseURL": "https://st-145404.dynamicstocloud.com:1113/ST-145404-DEV/ODataV4/",
+                "NL PROD": {
+                    "BaseURL": "https://grips-nl.dynamicstocloud.com:1113/BN_PROD_WS/ODataV4/",
                     "Company": "NAS Company"
                 }
             }
@@ -109,7 +159,34 @@
                     "Company": "NAS Company PROD3"
                 }
             }
+        },
+        "RO": {
+            "Name": "România",
+            "Databases": {
+                "RO PROD": {
+                    "BaseURL": "https://grips-ro.dynamicstocloud.com:2201/WS_RO_PROD/ODataV4/",
+                    "Company": "NAS Company"
+                }
+            }
+        },
+        "UK": {
+            "Name": "United Kingdom",
+            "Databases": {
+                "Equiry Retail": {
+                    "BaseURL": "https://grips-equity-uk.dynamicstocloud.com:2201/WS_UK_EQ/ODataV4/",
+                    "Company": "NAS Company"
+                },
+                "GRIPS_PL_PROD2": {
+                    "BaseURL": "https://grips-hiq-uk.dynamicstocloud.com:2201/WS_UK_F/ODataV4/",
+                    "Company": "NAS Company"
+                },
+                "GRIPS_PL_PROD3": {
+                    "BaseURL": "https://grips-uk-tf.dynamicstocloud.com:2201/WS_UK_TF/ODataV4/",
+                    "Company": "GRIPS_UK_PRODE Equity"
+                }
+            }
         }
+
 
     }
 }
