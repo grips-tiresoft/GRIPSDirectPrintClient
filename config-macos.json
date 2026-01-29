@@ -3,5 +3,5 @@
     "ReleaseCheckDelay": "3600",
     "TranscriptMaxAgeDays": "7",
     "UsePrereleaseVersion": false,
-    "Version": "1.0.43"
+    "Version": "1.0.44"
 }
