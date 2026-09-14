@@ -3,5 +3,9 @@
     "ReleaseCheckDelay": "3600",
     "TranscriptMaxAgeDays": "7",
     "UsePrereleaseVersion": false,
-    "Version": "1.0.48"
+    "Version": "1.0.49",
+    "PrinterRedirectionSuffixes": [
+        "redirected",
+        "from"
+    ]
 }
