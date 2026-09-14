@@ -335,7 +335,8 @@ function Get-LanguageStrings {
 function Select-AlternativePrinter {
     param(
         [string]$MissingPrinterName,
-        [PSCustomObject]$LanguageStrings
+        [PSCustomObject]$LanguageStrings,
+        [PSCustomObject]$Config
     )
     
     Add-Type -AssemblyName System.Windows.Forms
@@ -364,6 +365,19 @@ function Select-AlternativePrinter {
             [System.Windows.Forms.MessageBoxIcon]::Error
         )
         return $null
+    }
+    
+    # Check if there's a redirected or mapped printer from RDP/Citrix
+    $redirectedPrinter = $null
+    if ($Config -and $Config.PrinterRedirectionSuffixes) {
+        $suffixPattern = ($Config.PrinterRedirectionSuffixes | ForEach-Object { [regex]::Escape($_) }) -join "|"
+        $redirectedPrinter = $printers | Where-Object {
+            $_ -match "^$([regex]::Escape($MissingPrinterName))\s+\((?:$suffixPattern)\s+"
+        } | Select-Object -First 1
+    }
+    
+    if ($redirectedPrinter) {
+        return $redirectedPrinter
     }
     
     # Create form for printer selection
@@ -485,7 +499,7 @@ try {
                     # Check if printer exists
                     if (-not (Test-PrinterExists -PrinterName $printer)) {
                         Write-Warning "Printer '$printer' not found."
-                        $alternativePrinter = Select-AlternativePrinter -MissingPrinterName $printer -LanguageStrings $global:LanguageStrings
+                        $alternativePrinter = Select-AlternativePrinter -MissingPrinterName $printer -LanguageStrings $global:LanguageStrings -Config $global:config
                         
                         if ($null -eq $alternativePrinter) {
                             Write-Warning "No alternative printer selected. Skipping print job for $filePath"

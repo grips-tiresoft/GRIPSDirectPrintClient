@@ -26,5 +26,9 @@
     "TranscriptMaxAgeDays": "7",
     "TranscriptRotationTimeMins": "60",
     "UsePrereleaseVersion": false,
-    "Version": "1.0.48"
+    "Version": "1.0.49",
+    "PrinterRedirectionSuffixes": [
+        "redirected",
+        "from"
+    ]
 }
