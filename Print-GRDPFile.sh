@@ -515,7 +515,6 @@ get_language_strings() {
 # Function to select alternative printer using osascript (AppleScript)
 select_alternative_printer() {
     local missing_printer="$1"
-    local config_json="$2"
     
     # Get list of available printers
     local printers=$(lpstat -p | awk '{print $2}')
@@ -523,18 +522,6 @@ select_alternative_printer() {
     if [[ -z "$printers" ]]; then
         osascript -e 'display dialog "No printers available on this system." buttons {"OK"} default button "OK" with icon stop'
         return 1
-    fi
-    
-    # Check if there's a redirected or mapped printer from RDP/Citrix
-    if [[ -n "$config_json" && -f "$config_json" ]]; then
-        local suffix_patterns=$("$JQ" -r '.PrinterRedirectionSuffixes[]' "$config_json" 2>/dev/null | paste -sd '|' -)
-        if [[ -n "$suffix_patterns" ]]; then
-            local redirected_printer=$(echo "$printers" | grep -E "^$missing_printer\s+\($($suffix_patterns)\s+" | head -n1)
-            if [[ -n "$redirected_printer" ]]; then
-                echo "$redirected_printer"
-                return 0
-            fi
-        fi
     fi
     
     # Convert newline-separated printers to AppleScript list format
@@ -578,7 +565,7 @@ print_pdf_cups() {
     # Check if printer exists
     if ! test_printer_exists "$printer_name"; then
         echo "Warning: Printer '$printer_name' not found."
-        local alternative_printer=$(select_alternative_printer "$printer_name" "$CONFIG_FILE")
+        local alternative_printer=$(select_alternative_printer "$printer_name")
         
         if [[ -z "$alternative_printer" ]]; then
             echo "No alternative printer selected. Skipping print job for $pdf_file"
