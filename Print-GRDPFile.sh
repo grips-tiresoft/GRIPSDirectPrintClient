@@ -559,7 +559,7 @@ EOF
 print_pdf_cups() {
     local pdf_file="$1"
     local printer_name="$2"
-    local output_bin="$3"
+    local lp_options="$3"
     local additional_args="$4"
     
     # Check if printer exists
@@ -577,23 +577,13 @@ print_pdf_cups() {
     fi
     
     # Build lp command
-    local lp_options=""
-    
-    # Add output bin if specified
-    if [[ -n "$output_bin" ]]; then
-        lp_options="-o outputbin=$output_bin"
-    fi
-    
-    # Add additional arguments
-    if [[ -n "$additional_args" ]]; then
-        lp_options="$lp_options $additional_args"
-    fi
+    local lp_opts="$lp_options $additional_args"
     
     # Print the PDF
     echo "Printing $pdf_file to printer '$printer_name' with options: $lp_options"
     
-    if [[ -n "$lp_options" ]]; then
-        lp -d "$printer_name" $lp_options "$pdf_file"
+    if [[ -n "$lp_opts" ]]; then
+        lp -d "$printer_name" $lp_opts "$pdf_file"
     else
         lp -d "$printer_name" "$pdf_file"
     fi
@@ -653,11 +643,11 @@ main() {
         for ((i=0; i<entries_count; i++)); do
             local pdf_filename=$("$JQ" -r ".[${i}].Filename" "$settings_file")
             local printer=$("$JQ" -r ".[${i}].Printer" "$settings_file")
-            local output_bin=$("$JQ" -r ".[${i}].OutputBin" "$settings_file")
+            local lp_options=$("$JQ" -r ".[${i}].lp_options" "$settings_file")
             local add_args=$("$JQ" -r ".[${i}].AdditionalArgs" "$settings_file")
             
             # Handle null values
-            [[ "$output_bin" == "null" ]] && output_bin=""
+            [[ "$lp_options" == "null" ]] && lp_options=""
             [[ "$add_args" == "null" ]] && add_args=""
             
             local file_path="$temp_folder/$pdf_filename"
@@ -669,7 +659,7 @@ main() {
             
             if [[ "${file_path:l}" == *.pdf ]]; then
                 # Print PDF using CUPS
-                print_pdf_cups "$file_path" "$printer" "$output_bin" "$add_args"
+                print_pdf_cups "$file_path" "$printer" "$lp_options" "$add_args"
             else
                 # Open non-PDF file with default application (e.g., .eml files open with Thunderbird)
                 local downloads_folder="$HOME/Downloads"
