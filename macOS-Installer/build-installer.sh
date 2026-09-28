@@ -35,6 +35,9 @@ rm -rf "$PKG_DIR"
 mkdir -p "$PKG_DIR"
 mkdir -p "$PKG_DIR/payload/Applications"
 
+# Ensure the package directory is writable
+chmod -R u+w "$PKG_DIR" 2>/dev/null || true
+
 # Copy the app to the payload location
 cp -R "$BUILD_DIR/$APP_NAME" "$PKG_DIR/payload/Applications/"
 
@@ -52,6 +55,7 @@ pkgbuild \
     --identifier "com.grips.directprint" \
     --version "1.0.0" \
     --install-location "/" \
+    --ownership preserve \
     "$COMPONENT_PKG"
 
 if [[ ! -f "$COMPONENT_PKG" ]]; then

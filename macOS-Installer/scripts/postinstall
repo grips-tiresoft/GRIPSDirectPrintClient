@@ -20,10 +20,8 @@ fi
 
 # Register the application with Launch Services to handle .grdp files
 # This forces macOS to recognize the file type handler
-/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "$APP_PATH"
-
-# Set the app as the default handler for .grdp files for all users
-# Note: This requires admin privileges and may prompt the user
+# Suppress permission warnings that may occur during package creation
+/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "$APP_PATH" 2>/dev/null || true
 
 echo "GRIPS Direct Print has been installed successfully."
 echo "The application will now handle .grdp files by default."
