@@ -110,6 +110,10 @@ update_check() {
     
     local release_api_url="${CONFIG[ReleaseApiUrl]}"
     local use_prerelease="${CONFIG[UsePrereleaseVersion]}"
+    local response_file="/tmp/grdp_api_response_$$.json"
+    local latest_release_file="/tmp/grdp_latest_release_$$.json"
+    local jq_error_file="/tmp/grdp_jq_error_$$.txt"
+    local debug_dir="$(cache_dir)/debug"
     
     echo "[DEBUG] Release API URL: $release_api_url"
     echo "[DEBUG] Use prerelease: $use_prerelease"
@@ -121,7 +125,7 @@ update_check() {
         echo "[DEBUG] Fetching all releases from: $api_url"
         
         # Get all releases with detailed error handling
-        local http_code=$(curl -s -w "%{http_code}" -o /tmp/grdp_api_response_$$.json "$api_url" 2>&1)
+        local http_code=$(curl -s -w "%{http_code}" -o "$response_file" "$api_url" 2>&1)
         local curl_exit_code=$?
         
         echo "[DEBUG] HTTP response code: $http_code"
@@ -130,88 +134,50 @@ update_check() {
         if [[ $curl_exit_code -ne 0 ]]; then
             echo "[ERROR] curl failed with exit code $curl_exit_code"
             echo "Unable to check for updates (network error)"
-            rm -f /tmp/grdp_api_response_$$.json
+            rm -f "$response_file" "$latest_release_file" "$jq_error_file"
             return
         fi
         
         if [[ "$http_code" != "200" ]]; then
             echo "[ERROR] API returned HTTP $http_code"
-            if [[ -f /tmp/grdp_api_response_$$.json ]]; then
+            if [[ -f "$response_file" ]]; then
                 echo "[DEBUG] Response body (first 500 chars):"
-                head -c 500 /tmp/grdp_api_response_$$.json
+                head -c 500 "$response_file"
                 echo ""
             fi
             echo "Unable to check for updates (API error)"
-            rm -f /tmp/grdp_api_response_$$.json
+            rm -f "$response_file" "$latest_release_file" "$jq_error_file"
             return
         fi
-        
-        local all_releases=$(cat /tmp/grdp_api_response_$$.json)
-        
-        echo "[DEBUG] Response length: ${#all_releases} characters"
-        echo "[DEBUG] First 200 chars of response: ${all_releases:0:200}"
-        
-        # Sanitize control characters that might be in release notes
-        # GitHub API sometimes returns unescaped control characters in release body text
-        echo "[DEBUG] Sanitizing response to remove problematic control characters..."
-        
-        # Save original response for debugging
-        local debug_dir="$(cache_dir)/debug"
+
         mkdir -p "$debug_dir"
-        echo "$all_releases" > "$debug_dir/api_response_original.json"
+        cp "$response_file" "$debug_dir/api_response_original.json"
         echo "[DEBUG] Original response saved to: $debug_dir/api_response_original.json"
-        
-        # Use perl to escape literal control characters in JSON strings before jq processes it
-        # This handles cases where GitHub API returns unescaped newlines/CRs in string values
-        echo "$all_releases" | perl -0777 -pe '
-            # Escape literal control characters within JSON string values
-            s/"([^"]*)"/ 
-                my $str = $1;
-                $str =~ s#\\r#\\\\r#g;   # Escape any existing backslash-r
-                $str =~ s#\\n#\\\\n#g;   # Escape any existing backslash-n
-                $str =~ s#\r#\\n#g;      # Convert literal CR to escaped newline
-                $str =~ s#\n#\\n#g;      # Convert literal LF to escaped newline
-                $str =~ s#\t#\\t#g;      # Escape literal tabs
-                qq{"$str"}
-            /ge;
-        ' > "$debug_dir/api_response_sanitized.json"
-        echo "[DEBUG] Sanitized response saved to: $debug_dir/api_response_sanitized.json"
-        
-        # Test if response is valid JSON array
-        local latest_release
-        latest_release=$(cat "$debug_dir/api_response_sanitized.json" | "$JQ" '.[0]' 2>/tmp/grdp_jq_error_$$.txt)
-        local jq_exit_code=$?
-        
-        if [[ $jq_exit_code -ne 0 ]]; then
-            echo "[ERROR] jq parsing failed with exit code $jq_exit_code"
-            if [[ -f /tmp/grdp_jq_error_$$.txt ]]; then
+
+        echo "[DEBUG] Response length: $(wc -c < "$response_file" | tr -d '[:space:]') characters"
+        echo "[DEBUG] First 200 chars of response:"
+        head -c 200 "$response_file"
+        echo ""
+
+        if ! "$JQ" '.[0]' "$response_file" > "$latest_release_file" 2>"$jq_error_file"; then
+            echo "[ERROR] Failed to parse releases array"
+            if [[ -f "$jq_error_file" ]]; then
                 echo "[DEBUG] jq error output:"
-                cat /tmp/grdp_jq_error_$$.txt
+                cat "$jq_error_file"
             fi
-            echo "[DEBUG] Attempting to parse as single object instead of array..."
-            # Maybe it's a single release object, not an array
-            latest_release=$(cat "$debug_dir/api_response_sanitized.json" | "$JQ" '.' 2>/tmp/grdp_jq_error2_$$.txt)
-            jq_exit_code=$?
-            if [[ $jq_exit_code -ne 0 ]]; then
-                echo "[ERROR] jq parsing still failed"
-                cat /tmp/grdp_jq_error2_$$.txt 2>/dev/null
-                echo "[ERROR] Debug files saved in: $debug_dir"
-                echo "[ERROR] Check api_response_original.json and api_response_sanitized.json"
-                rm -f /tmp/grdp_api_response_$$.json /tmp/grdp_jq_error*.txt
-                echo "Unable to check for updates (JSON parsing error)"
-                return
-            fi
+            echo "[ERROR] Debug file saved in: $debug_dir/api_response_original.json"
+            rm -f "$response_file" "$latest_release_file" "$jq_error_file"
+            echo "Unable to check for updates (JSON parsing error)"
+            return
         fi
-        
-        rm -f /tmp/grdp_api_response_$$.json /tmp/grdp_api_sanitized_$$.json /tmp/grdp_jq_error*.txt
-        
-        echo "[DEBUG] Successfully parsed release data"
+
+        echo "[DEBUG] Successfully parsed latest prerelease entry"
     else
         echo "Checking for latest stable release only..."
         echo "[DEBUG] Fetching latest release from: $release_api_url"
         
         # Get latest release with detailed error handling
-        local http_code=$(curl -s -w "%{http_code}" -o /tmp/grdp_api_response_$$.json "$release_api_url" 2>&1)
+        local http_code=$(curl -s -w "%{http_code}" -o "$response_file" "$release_api_url" 2>&1)
         local curl_exit_code=$?
         
         echo "[DEBUG] HTTP response code: $http_code"
@@ -220,84 +186,59 @@ update_check() {
         if [[ $curl_exit_code -ne 0 ]]; then
             echo "[ERROR] curl failed with exit code $curl_exit_code"
             echo "Unable to check for updates (network error)"
-            rm -f /tmp/grdp_api_response_$$.json
+            rm -f "$response_file" "$latest_release_file" "$jq_error_file"
             return
         fi
         
         if [[ "$http_code" != "200" ]]; then
             echo "[ERROR] API returned HTTP $http_code"
-            if [[ -f /tmp/grdp_api_response_$$.json ]]; then
+            if [[ -f "$response_file" ]]; then
                 echo "[DEBUG] Response body (first 500 chars):"
-                head -c 500 /tmp/grdp_api_response_$$.json
+                head -c 500 "$response_file"
                 echo ""
             fi
             echo "Unable to check for updates (API error)"
-            rm -f /tmp/grdp_api_response_$$.json
+            rm -f "$response_file" "$latest_release_file" "$jq_error_file"
             return
         fi
-        
-        local latest_release=$(cat /tmp/grdp_api_response_$$.json)
-        
-        echo "[DEBUG] Response length: ${#latest_release} characters"
-        echo "[DEBUG] First 200 chars of response: ${latest_release:0:200}"
-        
-        # Sanitize control characters that might be in release notes
-        echo "[DEBUG] Sanitizing response to remove problematic control characters..."
-        
-        # Save original response for debugging
-        local debug_dir="$(cache_dir)/debug"
+
         mkdir -p "$debug_dir"
-        echo "$latest_release" > "$debug_dir/api_response_original.json"
+        cp "$response_file" "$debug_dir/api_response_original.json"
         echo "[DEBUG] Original response saved to: $debug_dir/api_response_original.json"
-        
-        # Use perl to escape literal control characters in JSON strings before jq processes it
-        # This handles cases where GitHub API returns unescaped newlines/CRs in string values
-        echo "$latest_release" | perl -0777 -pe '
-            # Escape literal control characters within JSON string values
-            s/"([^"]*)"/ 
-                my $str = $1;
-                $str =~ s#\\r#\\\\r#g;   # Escape any existing backslash-r
-                $str =~ s#\\n#\\\\n#g;   # Escape any existing backslash-n
-                $str =~ s#\r#\\n#g;      # Convert literal CR to escaped newline
-                $str =~ s#\n#\\n#g;      # Convert literal LF to escaped newline
-                $str =~ s#\t#\\t#g;      # Escape literal tabs
-                qq{"$str"}
-            /ge;
-        ' > "$debug_dir/api_response_sanitized.json"
-        echo "[DEBUG] Sanitized response saved to: $debug_dir/api_response_sanitized.json"
-        
-        # Verify it's valid JSON
-        cat "$debug_dir/api_response_sanitized.json" | "$JQ" -r '.' >/dev/null 2>/tmp/grdp_jq_error_$$.txt
-        local jq_validation_exit=$?
-        if [[ $jq_validation_exit -ne 0 ]]; then
-            echo "[ERROR] Response is not valid JSON"
-            cat /tmp/grdp_jq_error_$$.txt 2>/dev/null
-            echo "[ERROR] Debug files saved in: $debug_dir"
-            echo "[ERROR] Check api_response_original.json and api_response_sanitized.json"
-            rm -f /tmp/grdp_api_response_$$.json /tmp/grdp_jq_error*.txt
+
+        echo "[DEBUG] Response length: $(wc -c < "$response_file" | tr -d '[:space:]') characters"
+        echo "[DEBUG] First 200 chars of response:"
+        head -c 200 "$response_file"
+        echo ""
+
+        if ! "$JQ" '.' "$response_file" > "$latest_release_file" 2>"$jq_error_file"; then
+            echo "[ERROR] Failed to parse latest release response"
+            if [[ -f "$jq_error_file" ]]; then
+                echo "[DEBUG] jq error output:"
+                cat "$jq_error_file"
+            fi
+            echo "[ERROR] Debug file saved in: $debug_dir/api_response_original.json"
+            rm -f "$response_file" "$latest_release_file" "$jq_error_file"
             echo "Unable to check for updates (JSON parsing error)"
             return
         fi
-        
-        # Use sanitized version for further processing
-        latest_release=$(cat "$debug_dir/api_response_sanitized.json")
-        
-        rm -f /tmp/grdp_api_response_$$.json /tmp/grdp_jq_error*.txt
+
+        echo "[DEBUG] Successfully parsed latest stable release entry"
     fi
     
     # Extract the tag_name from the release JSON
     echo "[DEBUG] Extracting version tag from release data..."
     local release_version
-    release_version=$(printf '%s\n' "$latest_release" | "$JQ" -r '.tag_name' 2>/tmp/grdp_jq_error_$$.txt)
+    release_version=$("$JQ" -r '.tag_name' "$latest_release_file" 2>"$jq_error_file")
     local jq_tag_exit_code=$?
     
     if [[ $jq_tag_exit_code -ne 0 ]]; then
         echo "[ERROR] Failed to extract tag_name from release data"
-        if [[ -f /tmp/grdp_jq_error_$$.txt ]]; then
+        if [[ -f "$jq_error_file" ]]; then
             echo "[DEBUG] jq error:"
-            cat /tmp/grdp_jq_error_$$.txt
+            cat "$jq_error_file"
         fi
-        rm -f /tmp/grdp_jq_error*.txt
+        rm -f "$response_file" "$latest_release_file" "$jq_error_file"
         echo "Unable to check for updates (JSON parsing error)"
         return
     fi
@@ -313,12 +254,12 @@ update_check() {
     # Check if we got a valid version
     if [[ -z "$release_version" || "$release_version" == "null" ]]; then
         echo "[ERROR] Failed to extract valid version from API response"
-        rm -f /tmp/grdp_jq_error*.txt
+        rm -f "$response_file" "$latest_release_file" "$jq_error_file"
         echo "Unable to check for updates (API error or network issue)"
         return
     fi
     
-    rm -f /tmp/grdp_jq_error*.txt
+    rm -f "$jq_error_file"
     # Simple version comparison
     echo "[DEBUG] Comparing versions: release=$release_version current=$current_version"
     local version_comparison=$(printf '%s\n' "$release_version" "$current_version" | sort -V | tail -n1)
@@ -329,16 +270,17 @@ update_check() {
         
         # Look for .pkg asset in release
         echo "[DEBUG] Searching for .pkg asset in release..."
-        local pkg_download_url=$(printf '%s\n' "$latest_release" | "$JQ" -r '.assets[] | select(.name | test("GRIPSDirectPrint.*\\.pkg$"; "i")) | .browser_download_url' 2>&1 | head -n1)
-        local jq_assets_exit_code=${PIPESTATUS[1]}
+        local pkg_download_url=$("$JQ" -r '.assets[] | select(.name | test("GRIPSDirectPrint.*\\.pkg$"; "i")) | .browser_download_url' "$latest_release_file" 2>"$jq_error_file" | head -n1)
+        local jq_assets_exit_code=$?
         
         echo "[DEBUG] jq assets extraction exit code: $jq_assets_exit_code"
         echo "[DEBUG] Package download URL: '$pkg_download_url'"
         
-        if [[ -z "$pkg_download_url" || "$pkg_download_url" == "null" ]]; then
+        if [[ $jq_assets_exit_code -ne 0 || -z "$pkg_download_url" || "$pkg_download_url" == "null" ]]; then
             echo "[ERROR] Could not find .pkg installer in release assets"
             echo "[DEBUG] Available assets:"
-            printf '%s\n' "$latest_release" | "$JQ" -r '.assets[] | .name' 2>&1 || echo "[ERROR] Failed to list assets"
+            "$JQ" -r '.assets[] | .name' "$latest_release_file" 2>&1 || echo "[ERROR] Failed to list assets"
+            rm -f "$response_file" "$latest_release_file" "$jq_error_file"
             return
         fi
         
@@ -375,6 +317,8 @@ update_check() {
     else
         echo "No update required. Current version ($current_version) is up to date."
     fi
+
+    rm -f "$response_file" "$latest_release_file" "$jq_error_file"
 }
 
 # Function to perform the update
@@ -520,7 +464,7 @@ select_alternative_printer() {
     local printers=$(lpstat -p | awk '{print $2}')
     
     if [[ -z "$printers" ]]; then
-        osascript -e 'display dialog "No printers available on this system." buttons {"OK"} default button "OK" with icon stop'
+        osascript -e 'display dialog "No printers available on this system." buttons {"OK"} default button "OK" with icon stop' >/dev/null
         return 1
     fi
     
@@ -559,13 +503,18 @@ EOF
 print_pdf_cups() {
     local pdf_file="$1"
     local printer_name="$2"
-    local output_bin="$3"
+    local lp_options="$3"
     local additional_args="$4"
+    local lp_cmd=(lp -d "$printer_name")
     
     # Check if printer exists
     if ! test_printer_exists "$printer_name"; then
         echo "Warning: Printer '$printer_name' not found."
-        local alternative_printer=$(select_alternative_printer "$printer_name")
+        local alternative_printer
+        if ! alternative_printer=$(select_alternative_printer "$printer_name"); then
+            echo "No alternative printer selected. Skipping print job for $pdf_file"
+            return 1
+        fi
         
         if [[ -z "$alternative_printer" ]]; then
             echo "No alternative printer selected. Skipping print job for $pdf_file"
@@ -574,29 +523,26 @@ print_pdf_cups() {
         
         echo "Using alternative printer: $alternative_printer"
         printer_name="$alternative_printer"
+        lp_cmd=(lp -d "$printer_name")
     fi
     
-    # Build lp command
-    local lp_options=""
-    
-    # Add output bin if specified
-    if [[ -n "$output_bin" ]]; then
-        lp_options="-o outputbin=$output_bin"
+    # Build lp command without introducing blank arguments.
+    if [[ -n "$lp_options" ]]; then
+        local -a parsed_lp_options
+        parsed_lp_options=("${(@z)lp_options}")
+        (( ${#parsed_lp_options[@]} > 0 )) && lp_cmd+=("${parsed_lp_options[@]}")
     fi
-    
-    # Add additional arguments
+
     if [[ -n "$additional_args" ]]; then
-        lp_options="$lp_options $additional_args"
+        local -a parsed_additional_args
+        parsed_additional_args=("${(@z)additional_args}")
+        (( ${#parsed_additional_args[@]} > 0 )) && lp_cmd+=("${parsed_additional_args[@]}")
     fi
     
     # Print the PDF
-    echo "Printing $pdf_file to printer '$printer_name' with options: $lp_options"
-    
-    if [[ -n "$lp_options" ]]; then
-        lp -d "$printer_name" $lp_options "$pdf_file"
-    else
-        lp -d "$printer_name" "$pdf_file"
-    fi
+    echo "Printing $pdf_file to printer '$printer_name' with options: $lp_options $additional_args"
+    lp_cmd+=("$pdf_file")
+    "${lp_cmd[@]}"
     
     local exit_code=$?
     
@@ -653,11 +599,11 @@ main() {
         for ((i=0; i<entries_count; i++)); do
             local pdf_filename=$("$JQ" -r ".[${i}].Filename" "$settings_file")
             local printer=$("$JQ" -r ".[${i}].Printer" "$settings_file")
-            local output_bin=$("$JQ" -r ".[${i}].OutputBin" "$settings_file")
+            local lp_options=$("$JQ" -r ".[${i}].lp_options" "$settings_file")
             local add_args=$("$JQ" -r ".[${i}].AdditionalArgs" "$settings_file")
             
             # Handle null values
-            [[ "$output_bin" == "null" ]] && output_bin=""
+            [[ "$lp_options" == "null" ]] && lp_options=""
             [[ "$add_args" == "null" ]] && add_args=""
             
             local file_path="$temp_folder/$pdf_filename"
@@ -669,7 +615,7 @@ main() {
             
             if [[ "${file_path:l}" == *.pdf ]]; then
                 # Print PDF using CUPS
-                print_pdf_cups "$file_path" "$printer" "$output_bin" "$add_args"
+                print_pdf_cups "$file_path" "$printer" "$lp_options" "$add_args"
             else
                 # Open non-PDF file with default application (e.g., .eml files open with Thunderbird)
                 local downloads_folder="$HOME/Downloads"

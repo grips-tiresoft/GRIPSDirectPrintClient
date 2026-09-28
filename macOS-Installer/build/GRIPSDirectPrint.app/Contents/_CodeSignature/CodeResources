@@ -4,9 +4,13 @@
 <dict>
 	<key>files</key>
 	<dict>
+		<key>Resources/Assets.car</key>
+		<data>
+		e4wgfbMT2B6yDN2OjBQErn/uOpo=
+		</data>
 		<key>Resources/Print-GRDPFile.sh</key>
 		<data>
-		AGi71d6fJZe9/5RkAETpV5MHgAc=
+		mpGjhq+1UitIVW00xFOkpnUiO2E=
 		</data>
 		<key>Resources/Scripts/main.scpt</key>
 		<data>
@@ -18,7 +22,7 @@
 		</data>
 		<key>Resources/droplet.icns</key>
 		<data>
-		qNNSP6gATivEfI1mX4+VCxUouHQ=
+		c527fgo2edIeVvuFNCHj7/LFZVs=
 		</data>
 		<key>Resources/droplet.rsrc</key>
 		<data>
@@ -35,15 +39,26 @@
 	</dict>
 	<key>files2</key>
 	<dict>
+		<key>Resources/Assets.car</key>
+		<dict>
+			<key>hash</key>
+			<data>
+			e4wgfbMT2B6yDN2OjBQErn/uOpo=
+			</data>
+			<key>hash2</key>
+			<data>
+			wv2FpLIpjQz3G+9XsoU6DFLEZJgYTr1Xr4F2uKgGeWY=
+			</data>
+		</dict>
 		<key>Resources/Print-GRDPFile.sh</key>
 		<dict>
 			<key>hash</key>
 			<data>
-			AGi71d6fJZe9/5RkAETpV5MHgAc=
+			mpGjhq+1UitIVW00xFOkpnUiO2E=
 			</data>
 			<key>hash2</key>
 			<data>
-			sLsh3xb2OKyw8LP8IAu6KESylSbw6TeNbJRGMR9oWJ8=
+			X26h7URqvaSFCZzOXJAeH5aCS9WBxif30ynJd9372fw=
 			</data>
 		</dict>
 		<key>Resources/Scripts/main.scpt</key>
@@ -72,11 +87,11 @@
 		<dict>
 			<key>hash</key>
 			<data>
-			qNNSP6gATivEfI1mX4+VCxUouHQ=
+			c527fgo2edIeVvuFNCHj7/LFZVs=
 			</data>
 			<key>hash2</key>
 			<data>
-			8bc0JqW+sc2ju5zB4gkHAD9/lxjPcq52eiav7nh8dZ4=
+			5AdEOTO7ntj1w+V6YoeQrbd5qUf4DqZj8slCmwnZU58=
 			</data>
 		</dict>
 		<key>Resources/droplet.rsrc</key>
