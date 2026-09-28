@@ -464,7 +464,7 @@ select_alternative_printer() {
     local printers=$(lpstat -p | awk '{print $2}')
     
     if [[ -z "$printers" ]]; then
-        osascript -e 'display dialog "No printers available on this system." buttons {"OK"} default button "OK" with icon stop'
+        osascript -e 'display dialog "No printers available on this system." buttons {"OK"} default button "OK" with icon stop' >/dev/null
         return 1
     fi
     
@@ -505,11 +505,16 @@ print_pdf_cups() {
     local printer_name="$2"
     local lp_options="$3"
     local additional_args="$4"
+    local lp_cmd=(lp -d "$printer_name")
     
     # Check if printer exists
     if ! test_printer_exists "$printer_name"; then
         echo "Warning: Printer '$printer_name' not found."
-        local alternative_printer=$(select_alternative_printer "$printer_name")
+        local alternative_printer
+        if ! alternative_printer=$(select_alternative_printer "$printer_name"); then
+            echo "No alternative printer selected. Skipping print job for $pdf_file"
+            return 1
+        fi
         
         if [[ -z "$alternative_printer" ]]; then
             echo "No alternative printer selected. Skipping print job for $pdf_file"
@@ -518,19 +523,26 @@ print_pdf_cups() {
         
         echo "Using alternative printer: $alternative_printer"
         printer_name="$alternative_printer"
+        lp_cmd=(lp -d "$printer_name")
     fi
     
-    # Build lp command
-    local lp_opts="$lp_options $additional_args"
+    # Build lp command without introducing blank arguments.
+    if [[ -n "$lp_options" ]]; then
+        local -a parsed_lp_options
+        parsed_lp_options=("${(@z)lp_options}")
+        (( ${#parsed_lp_options[@]} > 0 )) && lp_cmd+=("${parsed_lp_options[@]}")
+    fi
+
+    if [[ -n "$additional_args" ]]; then
+        local -a parsed_additional_args
+        parsed_additional_args=("${(@z)additional_args}")
+        (( ${#parsed_additional_args[@]} > 0 )) && lp_cmd+=("${parsed_additional_args[@]}")
+    fi
     
     # Print the PDF
-    echo "Printing $pdf_file to printer '$printer_name' with options: $lp_options"
-    
-    if [[ -n "$lp_opts" ]]; then
-        lp -d "$printer_name" $lp_opts "$pdf_file"
-    else
-        lp -d "$printer_name" "$pdf_file"
-    fi
+    echo "Printing $pdf_file to printer '$printer_name' with options: $lp_options $additional_args"
+    lp_cmd+=("$pdf_file")
+    "${lp_cmd[@]}"
     
     local exit_code=$?
     
