@@ -4,10 +4,6 @@
 <dict>
 	<key>files</key>
 	<dict>
-		<key>Resources/Assets.car</key>
-		<data>
-		e4wgfbMT2B6yDN2OjBQErn/uOpo=
-		</data>
 		<key>Resources/Print-GRDPFile.sh</key>
 		<data>
 		mpGjhq+1UitIVW00xFOkpnUiO2E=
@@ -18,11 +14,11 @@
 		</data>
 		<key>Resources/config-macos.json</key>
 		<data>
-		HA9HsfQ3G/IDuPoC0ppDN47Ladc=
+		bZacWvkDNo+tjcMmpWKrMzN+o+k=
 		</data>
 		<key>Resources/droplet.icns</key>
 		<data>
-		c527fgo2edIeVvuFNCHj7/LFZVs=
+		qNNSP6gATivEfI1mX4+VCxUouHQ=
 		</data>
 		<key>Resources/droplet.rsrc</key>
 		<data>
@@ -39,17 +35,6 @@
 	</dict>
 	<key>files2</key>
 	<dict>
-		<key>Resources/Assets.car</key>
-		<dict>
-			<key>hash</key>
-			<data>
-			e4wgfbMT2B6yDN2OjBQErn/uOpo=
-			</data>
-			<key>hash2</key>
-			<data>
-			wv2FpLIpjQz3G+9XsoU6DFLEZJgYTr1Xr4F2uKgGeWY=
-			</data>
-		</dict>
 		<key>Resources/Print-GRDPFile.sh</key>
 		<dict>
 			<key>hash</key>
@@ -76,22 +61,22 @@
 		<dict>
 			<key>hash</key>
 			<data>
-			HA9HsfQ3G/IDuPoC0ppDN47Ladc=
+			bZacWvkDNo+tjcMmpWKrMzN+o+k=
 			</data>
 			<key>hash2</key>
 			<data>
-			dDZApjVFYsWmhioxwkF19a4hjKhelEImOrfNbIPNkAo=
+			5ioV2SrHCNAW1N2MAN72RHKlwThipEp9dFKwEvWpPGw=
 			</data>
 		</dict>
 		<key>Resources/droplet.icns</key>
 		<dict>
 			<key>hash</key>
 			<data>
-			c527fgo2edIeVvuFNCHj7/LFZVs=
+			qNNSP6gATivEfI1mX4+VCxUouHQ=
 			</data>
 			<key>hash2</key>
 			<data>
-			5AdEOTO7ntj1w+V6YoeQrbd5qUf4DqZj8slCmwnZU58=
+			8bc0JqW+sc2ju5zB4gkHAD9/lxjPcq52eiav7nh8dZ4=
 			</data>
 		</dict>
 		<key>Resources/droplet.rsrc</key>
